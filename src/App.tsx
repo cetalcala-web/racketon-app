@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { Home, Trophy, CalendarDays, Users, UserRound, LogIn, LogOut, Menu, X, Swords, ChartNoAxesColumnIncreasing, ShieldCheck, ArrowRight, MapPin } from 'lucide-react';
+import { Home, Trophy, CalendarDays, Users, UserRound, LogIn, LogOut, Menu, X, ChartNoAxesColumnIncreasing, ShieldCheck, ArrowRight, MapPin } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import { configured, supabase } from './supabase';
