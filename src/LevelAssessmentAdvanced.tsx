@@ -13,6 +13,7 @@ export default function LevelAssessmentAdvanced({userId,enabledSports}:{userId:s
  const [busy,setBusy]=useState(false);
  const [notice,setNotice]=useState('');
  const [saved,setSaved]=useState(false);
+ const [loaded,setLoaded]=useState(false);
  const [previous,setPrevious]=useState<number|null>(null);
  const [rating,setRating]=useState<number|null>(null);
  const [ratingStatus,setRatingStatus]=useState('provisional');
@@ -20,15 +21,15 @@ export default function LevelAssessmentAdvanced({userId,enabledSports}:{userId:s
  useEffect(()=>{
   let active=true;
   async function load(){
-   setNotice('');setSaved(false);setAnswers({});setPrevious(null);setRating(null);
-   if(!supabase||sport!=='Tenis')return;
+   setNotice('');setSaved(false);setLoaded(false);setAnswers({});setPrevious(null);setRating(null);
+   if(!supabase||sport!=='Tenis'){setLoaded(true);return;}
    const {data,error}=await supabase.from('player_assessments').select('answers,technical_index').eq('user_id',userId).eq('sport','Tenis').maybeSingle();
    if(!active)return;
-   if(error){setNotice('Error al cargar la evaluación: '+error.message);return;}
+   if(error){setNotice('Error al cargar la evaluación: '+error.message);setLoaded(true);return;}
    const ratingResult=await supabase.from('tennis_ratings').select('rating,status').eq('user_id',userId).maybeSingle();
    if(!active)return;
    if(!ratingResult.error&&ratingResult.data){setRating(Number(ratingResult.data.rating));setRatingStatus(String(ratingResult.data.status));}
-   if(data){const a=data.answers as number[];if(Array.isArray(a)){const restored:Record<number,number>={};a.forEach((v,i)=>{if(Number.isInteger(v)&&v>=0&&v<=3)restored[i]=v});setAnswers(restored)}setPrevious(Number(data.technical_index));setSaved(true)}
+   if(data){const a=data.answers as number[];if(Array.isArray(a)){const restored:Record<number,number>={};a.forEach((v,i)=>{if(Number.isInteger(v)&&v>=0&&v<=3)restored[i]=v});setAnswers(restored)}setPrevious(Number(data.technical_index));setSaved(true)}setLoaded(true);
   }
   void load();return()=>{active=false};
  },[userId,sport]);
@@ -36,11 +37,11 @@ export default function LevelAssessmentAdvanced({userId,enabledSports}:{userId:s
  const technical=completed===20?mean([2,3,4,5,6,7,8,9,10,11,12].map(i=>answers[i]))/3*100:null;
  const inconsistent=completed===20 && mean([2,3,4,5,6,7,8,9,10,11,12].map(i=>answers[i]))<1.5 && answers[13]>=3;
  async function save(){
-  if(!supabase||technical===null||sport!=='Tenis')return;
+  if(!supabase||technical===null||sport!=='Tenis'||saved||!loaded)return;
   setBusy(true);setNotice('');
-  const {error}=await supabase.from('player_assessments').upsert({user_id:userId,sport:'Tenis',assessment_version:'tennis-20-v1',answers:Array.from({length:20},(_,i)=>answers[i]),technical_index:Number(technical.toFixed(2)),status:'pending_calibration',updated_at:new Date().toISOString()},{onConflict:'user_id,sport'});
+  const {error}=await supabase.from('player_assessments').insert({user_id:userId,sport:'Tenis',assessment_version:'tennis-20-v1',answers:Array.from({length:20},(_,i)=>answers[i]),technical_index:Number(technical.toFixed(2)),status:'pending_calibration',updated_at:new Date().toISOString()});
   setBusy(false);
-  if(error){setNotice('No se pudo guardar: '+error.message);return}
+  if(error){setNotice(error.code==='23505'?'Ya existe una evaluación inicial de tenis para esta cuenta. Recarga la página para verla.':'No se pudo guardar: '+error.message);return}
   setSaved(true);setPrevious(technical);
   const ratingResult=await supabase.from('tennis_ratings').select('rating,status').eq('user_id',userId).maybeSingle();
   if(ratingResult.error||!ratingResult.data){setNotice('Evaluación guardada, pero no se pudo recuperar el rating. Comprueba que ejecutaste el SQL 0005.');return;}
@@ -52,17 +53,19 @@ export default function LevelAssessmentAdvanced({userId,enabledSports}:{userId:s
    <select style={{...inputStyle,marginTop:6}} value={sport} onChange={e=>setSport(e.target.value as Sport)}>{enabledSports.map(s=><option key={s}>{s}</option>)}</select>
   </label>
   {enabledSports.length===0?<p>Activa primero un deporte en «Mis deportes».</p>:sport!=='Tenis'?<p>El cuestionario avanzado de {sport} está en preparación. Conservamos tu nivel anterior sin modificarlo.</p>:<>
-   {saved&&<p style={{margin:0,color:'#147344'}}>Evaluación guardada{previous!==null?` · Índice técnico ${previous.toFixed(1)}/100`:''}. Puedes revisarla y volver a guardarla.</p>}
+   {!loaded&&<p>Comprobando evaluación existente…</p>}
+   {saved&&<p style={{margin:0,color:'#147344'}}>Evaluación completada y bloqueada{previous!==null?` · Índice técnico ${previous.toFixed(1)}/100`:''}. Ya no puede modificarse.</p>}
    <div style={{display:'flex',flexWrap:'wrap',gap:6}}>{BLOCKS.map((b,i)=><button key={b} type="button" onClick={()=>setBlock(i)} style={{border:'1px solid #d9b5be',borderRadius:20,padding:'7px 10px',cursor:'pointer',background:i===block?'#C8102E':'white',color:i===block?'white':'#333'}}>{b}</button>)}</div>
    <p style={{margin:0,color:'#655'}}>Respondidas: {completed}/20</p>
    {QUESTIONS.map((q,i)=>q.block===BLOCKS[block]?<label key={i} style={{display:'grid',gap:6,fontWeight:600,fontSize:14}}>{i+1}. {q.question}
-    <select style={inputStyle} value={answers[i]===undefined?'':String(answers[i])} onChange={e=>{setAnswers(a=>({...a,[i]:Number(e.target.value)}));setSaved(false)}}>
+    <select style={inputStyle} value={answers[i]===undefined?'':String(answers[i])} disabled={saved||!loaded||busy} onChange={e=>{if(!saved)setAnswers(a=>({...a,[i]:Number(e.target.value)}))}}>
      <option value="" disabled>Selecciona tu respuesta</option>{q.options.map((o,j)=><option key={j} value={j}>{o}</option>)}
     </select></label>:null)}
    <div style={{display:'flex',justifyContent:'space-between',gap:10}}><button type="button" disabled={block===0} onClick={()=>setBlock(b=>b-1)}>Anterior</button><button type="button" disabled={block===4} onClick={()=>setBlock(b=>b+1)}>Siguiente bloque</button></div>
    {technical!==null&&<div style={{background:'white',borderRadius:9,padding:14,border:'1px solid #e9d4d9'}}><strong>Índice técnico-táctico declarado: {technical.toFixed(1)}/100</strong><p style={{margin:'5px 0 0'}}>Es una autoevaluación. La puntuación RACKETON provisional se muestra por separado.</p>{inconsistent&&<p style={{color:'#b42332'}}>Revisión recomendada: competición oficial declarada y competencia técnica básica. Conviene aportar resultados verificables.</p>}</div>}
    {rating!==null&&<div style={{border:'2px solid #C8102E',borderRadius:12,padding:18,background:'white'}}><div style={{fontSize:13,color:'#655'}}>RACKETON RATING · TENIS</div><div style={{fontSize:34,fontWeight:800,color:'#C8102E'}}>{rating.toFixed(2)}</div><strong>{ratingStatus==='provisional'?'PROVISIONAL':ratingStatus==='calibrating'?'EN CALIBRACIÓN':'CONSOLIDADO'}</strong><p style={{fontSize:12,color:'#655',margin:'8px 0 0'}}>Conversión experimental RACKETON 0.4; no equivale a UTR. El rating se ajustará cuando haya partidos válidos.</p></div>}
-   <button type="button" className="primary" disabled={busy||completed!==20} onClick={()=>void save()}>{busy?'Guardando…':'Guardar evaluación avanzada'}</button>
+   <button type="button" className="primary" disabled={busy||completed!==20||saved||!loaded} onClick={()=>void save()}>{saved?'🔒 Evaluación completada':busy?'Guardando…':'Finalizar y bloquear evaluación'}</button>
+   {!saved&&loaded&&completed===20&&<p style={{fontSize:13,color:'#8b2434'}}>Al finalizar, tus respuestas quedarán bloqueadas y no podrás repetir este cuestionario.</p>}
    {notice&&<p role="status" style={{margin:0,color:notice.startsWith('Evaluación')?'#147344':'#b42332'}}>{notice}</p>}
    <p style={{margin:0,fontSize:12,color:'#736b6d'}}>Las valoraciones anteriores (escala 1–7) se conservan. El nuevo rating de tenis es provisional y todavía no se actualiza con partidos.</p>
   </>}
