@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
 import { Search, MapPin, ShieldCheck, Users } from 'lucide-react';
 import { supabase } from './supabase';
+import { CountrySelect } from './CountrySelect';
 
 type Player = { user_id: string; display_name: string; country: string; city: string; rating: number; rating_status: string; matches_played: number; preferred_format: string; availability: string };
 const inputStyle: React.CSSProperties = { width: '100%', boxSizing: 'border-box', border: '1px solid #dedee3', borderRadius: 9, padding: '11px 12px', fontSize: 15, background: '#fff', color: '#24242a' };
@@ -25,7 +26,7 @@ export default function PlayerSearch({ userId }: { userId: string }) {
   <div style={{padding:20,background:'#fff',border:'1px solid #e7e7eb',borderRadius:15}}>
    <div style={{display:'flex',gap:10,alignItems:'center',marginBottom:16}}><Search color="#c8102e"/><div><strong>Buscar rivales de tenis</strong><p style={{margin:'4px 0 0',color:'#65656c',fontSize:14}}>Solo aparecen jugadores que han autorizado expresamente su visibilidad.</p></div></div>
    <form onSubmit={e=>{e.preventDefault();void search()}} style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(170px,1fr))',gap:14}}>
-    <label style={labelStyle}>País<input style={inputStyle} maxLength={80} value={country} onChange={e=>setCountry(e.target.value)} placeholder="Ej. España"/></label>
+    <label style={labelStyle}>País<CountrySelect style={inputStyle} value={country} onChange={setCountry} includeAll/></label>
     <label style={labelStyle}>Ciudad<input style={inputStyle} maxLength={100} value={city} onChange={e=>setCity(e.target.value)} placeholder="Ej. Madrid"/></label>
     <label style={labelStyle}>Rating mínimo<input style={inputStyle} type="number" step="0.01" min="1" max="20" value={min} onChange={e=>setMin(e.target.value)}/></label>
     <label style={labelStyle}>Rating máximo<input style={inputStyle} type="number" step="0.01" min="1" max="20" value={max} onChange={e=>setMax(e.target.value)}/></label>
