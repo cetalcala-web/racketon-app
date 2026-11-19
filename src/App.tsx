@@ -11,7 +11,7 @@ import TennisLeaderboard from './TennisLeaderboard';
 import TennisResults from './TennisResults';
 import TennisRatingHistory from './TennisRatingHistory';
 import TennisCompetitiveProfile from './TennisCompetitiveProfile';
-import {ClubPortal,PlayerLeagues} from './RacketonAccess081';
+import {ClubPortal,PlayerLeagues} from './RacketonAccess083';
 
 type Tab = 'Inicio'|'Jugadores'|'Desafíos'|'Rankings'|'Mis ligas'|'Clubes'|'Torneos'|'Reservas'|'Perfil';
 const tabs: {name:Tab;icon:LucideIcon}[] = [{name:'Inicio',icon:Home},{name:'Jugadores',icon:Users},{name:'Desafíos',icon:Trophy},{name:'Rankings',icon:ChartNoAxesColumnIncreasing},{name:'Mis ligas',icon:Users},{name:'Clubes',icon:ShieldCheck},{name:'Torneos',icon:Trophy},{name:'Reservas',icon:CalendarDays},{name:'Perfil',icon:UserRound}];
