@@ -13,6 +13,7 @@ export default function RankingConfigurator083({rankingId,onSaved}:{rankingId:st
  const [existing,setExisting]=useState(0),[busy,setBusy]=useState(false),[error,setError]=useState(''),[notice,setNotice]=useState('');
  useEffect(()=>{let active=true;setError('');setNotice('');
   async function load(){
+   if (!supabase) { if(active)setError('Supabase no está configurado.'); return; }
    const [r,g]=await Promise.all([
     supabase.from('racketon_club_rankings').select('id,name,format,status,settings').eq('id',rankingId).single(),
     supabase.from('racketon_club_groups').select('id',{count:'exact',head:true}).eq('ranking_id',rankingId)
@@ -32,7 +33,9 @@ export default function RankingConfigurator083({rankingId,onSaved}:{rankingId:st
   void load();return()=>{active=false};
  },[rankingId]);
  async function save(e:React.FormEvent){
-  e.preventDefault();if(!ranking)return;setBusy(true);setError('');setNotice('');
+  e.preventDefault();if(!ranking)return;
+  if (!supabase) { setError('Supabase no está configurado.'); return; }
+  setBusy(true);setError('');setNotice('');
   const settings={seeding,promotion,group_size:Number(size),cycle_weeks:Number(weeks),points_win:Number(win),points_loss:Number(loss),allow_challenges:challenges,configuration_version:'0.8.3'};
   const {error:err}=await supabase.rpc('racketon_configure_ranking_083',{
    p_ranking:rankingId,p_format:format,p_settings:settings,p_group_count:format==='box'&&existing===0?count:0,p_group_prefix:prefix
