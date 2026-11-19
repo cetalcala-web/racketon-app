@@ -32,7 +32,8 @@ export default function ClubRankingsAdmin081({userId}:{userId:string}){
   if(c.error){setError(c.error.message);return}
   setGroups((c.data??[]) as Group[]);
  },[]);
- useEffect(()=>{setClub('');setRanking('');void load()},[userId,load]);
+ useEffect(()=>{void load()},[userId,load]);
+ useEffect(()=>{if(!club&&clubs.length)setClub(clubs[0].id)},[clubs,club]);
  const run=async(fn:string,args:Record<string,unknown>,success:string)=>{
   if(!supabase)return;
   setBusy(true);setError('');setNotice('');
@@ -47,7 +48,7 @@ export default function ClubRankingsAdmin081({userId}:{userId:string}){
  };
  const filtered=rankings.filter(r=>r.club_id===club);
  return <section style={{maxWidth:1050,margin:'20px auto',display:'grid',gap:16}}>
-  <div style={panel}><span style={{color:'#c8102e',fontWeight:800,fontSize:12}}>RACKETON · CLUBES</span><h2 style={{margin:'8px 0'}}>Gestión de rankings</h2><p style={{color:'#52525b'}}>Versión 0.8.4: configuración, solicitudes e invitaciones con aceptación bilateral. La asignación de jugadores a grupos llegará después.</p></div>
+  <div style={panel}><span style={{color:'#c8102e',fontWeight:800,fontSize:12}}>RACKETON · RANKINGS OFICIALES</span><h2 style={{margin:'8px 0'}}>Gestión de rankings</h2><p style={{color:'#52525b'}}>Versión 0.8.4: configuración, solicitudes e invitaciones con aceptación bilateral. La asignación de jugadores a grupos llegará después.</p></div>
   {error&&<div role="alert" style={{...panel,color:'#b91c1c'}}>Error: {error}. Comprueba que has ejecutado el SQL 0013.</div>}
   {notice&&<div role="status" style={{...panel,color:'#15803d'}}>{notice}</div>}
   <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:16}}>
@@ -65,7 +66,7 @@ export default function ClubRankingsAdmin081({userId}:{userId:string}){
     <button style={button} disabled={busy}>Crear ranking</button>
    </form>
    <div style={{...panel,display:'grid',gap:12,alignContent:'start'}}>
-    <h3 style={{margin:0}}>Rankings del club</h3>
+    <h3 style={{margin:0}}>Rankings del club ({filtered.length})</h3>
     <select style={input} value={ranking} onChange={e=>setRanking(e.target.value)}><option value="">Selecciona un ranking</option>{filtered.map(r=><option key={r.id} value={r.id}>{r.name} · {r.status==='draft'?'Borrador':r.status}</option>)}</select>
     {!filtered.length&&<p style={{color:'#71717a'}}>Todavía no hay rankings.</p>}
    </div>
