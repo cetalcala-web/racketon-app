@@ -21,7 +21,28 @@ export default function TennisResults({userId}:{userId:string}){
  useEffect(()=>{void load()},[load,userId]);
  const resultFor=(id:string)=>results.find(r=>r.challenge_id===id);
  const nameFor=(c:Challenge,id:string)=>id===c.challenger_id?c.challenger_name:c.challenged_name;
- const scoreboard=(c:Challenge,pairs:(number|string)[][],editable=false)=><div style={{border:'1px solid #d4d4d8',borderRadius:14,overflow:'hidden',background:'#18181b',color:'#fff'}}><div style={{display:'grid',gridTemplateColumns:`minmax(130px,1fr) repeat(${pairs.length},70px)`,padding:'12px 14px',gap:6,alignItems:'center',fontSize:12,color:'#f4b7bf'}}><span>MARCADOR · TENIS</span>{pairs.map((_,i)=><span key={i} style={{textAlign:'center'}}>SET {i+1}</span>)}</div>{[0,1].map(j=><div key={j} style={{display:'grid',gridTemplateColumns:`minmax(130px,1fr) repeat(${pairs.length},70px)`,gap:6,alignItems:'center',padding:'12px 14px',borderTop:'1px solid #3f3f46'}}><strong style={{overflowWrap:'anywhere',fontSize:14}}>{j===0?c.challenger_name:c.challenged_name}</strong>{pairs.map((pair,i)=><div key={i} style={{textAlign:'center'}}>{editable?<select aria-label={`Set ${i+1}, ${j===0?c.challenger_name:c.challenged_name}`} value={String(pair[j])} style={input} onChange={e=>setSets(old=>old.map((p,k)=>k===i?p.map((v,l)=>l===j?e.target.value:v):p))}><option value=''>–</option>{Array.from({length:8},(_,n)=><option key={n} value={n}>{n}</option>)}</select>:<strong style={{fontSize:23}}>{pair[j]}</strong>}</div>)}</div>)}</div>;
+ const scoreboard=(c:Challenge,pairs:(number|string)[][],editable=false)=>{
+  const players=[c.challenger_name,c.challenged_name];
+  const wins=[0,0];
+  pairs.forEach(pair=>{const a=Number(pair[0]),b=Number(pair[1]);if(String(pair[0])!==''&&String(pair[1])!==''&&a!==b)wins[a>b?0:1]++});
+  return <div style={{borderRadius:18,overflow:'hidden',background:'#101827',color:'#fff',boxShadow:'0 12px 30px rgba(15,23,42,.15)'}}>
+   <div style={{display:'flex',justifyContent:'space-between',gap:10,alignItems:'center',padding:'14px 18px',borderBottom:'1px solid #334155',background:'#19253a'}}>
+    <span style={{fontSize:11,fontWeight:900,letterSpacing:2,color:'#fda4af'}}>RACKETON <span style={{color:'#fff'}}>LIVE SCORE</span></span>
+    <span style={{fontSize:11,color:'#cbd5e1'}}>{editable?'INTRODUCIR RESULTADO':'MARCADOR DEL PARTIDO'}</span>
+   </div>
+   <div style={{overflowX:'auto'}}><div style={{minWidth:Math.max(380,220+pairs.length*74)}}>
+    <div style={{display:'grid',gridTemplateColumns:`minmax(155px,1fr) 54px repeat(${pairs.length},64px)`,gap:6,padding:'12px 14px 7px',color:'#94a3b8',fontSize:10,fontWeight:800,letterSpacing:1}}>
+     <span>JUGADOR</span><span style={{textAlign:'center'}}>SETS</span>{pairs.map((_,i)=><span key={i} style={{textAlign:'center'}}>SET {i+1}</span>)}
+    </div>
+    {players.map((name,j)=><div key={j} style={{display:'grid',gridTemplateColumns:`minmax(155px,1fr) 54px repeat(${pairs.length},64px)`,gap:6,alignItems:'center',padding:'12px 14px',borderTop:'1px solid #334155',background:j===0?'#172338':'#101827'}}>
+     <div style={{display:'flex',gap:9,alignItems:'center',minWidth:0}}><span style={{width:5,height:31,borderRadius:5,background:j===0?'#ef4444':'#64748b',flexShrink:0}}/><strong style={{fontSize:14,overflowWrap:'anywhere',lineHeight:1.3}}>{name}</strong></div>
+     <strong style={{fontSize:23,textAlign:'center',color:'#fda4af'}}>{wins[j]}</strong>
+     {pairs.map((pair,i)=><div key={i} style={{textAlign:'center'}}>{editable?<select aria-label={`Set ${i+1}, juegos de ${name}`} value={String(pair[j])} style={{...input,width:54,height:47,padding:4,border:'1px solid #64748b',borderRadius:9,background:'#fff',color:'#111827',fontSize:20}} onChange={e=>setSets(old=>old.map((p,k)=>k===i?p.map((v,l)=>l===j?e.target.value:v):p))}><option value=''>–</option>{Array.from({length:8},(_,n)=><option key={n} value={n}>{n}</option>)}</select>:<strong style={{fontSize:25,fontVariantNumeric:'tabular-nums'}}>{pair[j]}</strong>}</div>)}
+    </div>)}
+   </div></div>
+   <div style={{padding:'10px 18px',fontSize:11,color:'#94a3b8',borderTop:'1px solid #334155'}}>TENIS · {editable?'Selecciona los juegos de cada set':'Resultado registrado en RACKETON'}</div>
+  </div>;
+ };
  async function submit(id:string){if(!supabase)return;const parsed=sets.map(pair=>pair.map(x=>Number(x)));
   if(sets.some(pair=>pair.some(x=>x.trim()===''))){setNotice('Completa todos los juegos de cada set.');return;}
   setBusy(true);setNotice('');const {error}=await supabase.rpc('submit_tennis_result',{p_challenge_id:id,p_sets:parsed});setBusy(false);
