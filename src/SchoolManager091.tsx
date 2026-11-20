@@ -1,5 +1,6 @@
-import ClubCourtsVisual093 from './ClubCourtsVisual094';
-import SchoolSchedule092 from './SchoolSchedule092';
+import ClubStoreInventory096 from './ClubStoreInventory096';
+import ClubCourtsVisual093 from './ClubCourtsVisual095';
+import SchoolSchedule092 from './SchoolSchedule095';
 import {useCallback,useEffect,useState} from 'react';
 import {supabase} from './supabase';
 import { GraduationCap, Sprout, Target, Activity, Trophy, Users, Plus, CalendarDays, ChevronRight, Layers3, CheckCircle2, ShieldCheck } from 'lucide-react';
@@ -14,7 +15,7 @@ export default function SchoolManager090({userId}:{userId:string}){
  const [clubs,setClubs]=useState<Club[]>([]),[schools,setSchools]=useState<School[]>([]),[seasons,setSeasons]=useState<Season[]>([]),[programs,setPrograms]=useState<Program[]>([]),[groups,setGroups]=useState<Group[]>([]);
  const [club,setClub]=useState(''),[school,setSchool]=useState(''),[season,setSeason]=useState(''),[program,setProgram]=useState('');
  const [seasonName,setSeasonName]=useState('2026/27'),[start,setStart]=useState('2026-09-01'),[end,setEnd]=useState('2027-06-30'),[programName,setProgramName]=useState(''),[groupName,setGroupName]=useState(''),[capacity,setCapacity]=useState(8);
- const [section,setSection]=useState<'resumen'|'programas'|'grupos'|'pistas'|'parrilla'|'alumnos'|'entrenadores'|'facturacion'>('resumen');
+ const [section,setSection]=useState<'resumen'|'programas'|'grupos'|'pistas'|'parrilla'|'alumnos'|'entrenadores'|'facturacion'|'tienda'>('resumen');
  const [error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
  const load=useCallback(async()=>{const db=supabase;if(!db){setError('Supabase no está configurado');return}
  const results=await Promise.all([
@@ -34,7 +35,7 @@ export default function SchoolManager090({userId}:{userId:string}){
  async function run(fn:string,args:Record<string,unknown>,message:string,after?:(id:string)=>void){const db=supabase;if(!db)return;setBusy(true);setError('');setNotice('');
  const {data,error:e}=await db.rpc(fn,args);if(e)setError(e.message);else{await load();setNotice(message);if(after&&typeof data==='string')after(data)}setBusy(false)}
  const seasonOptions=seasons.filter(s=>s.school_id===school),programOptions=programs.filter(p=>p.season_id===season),groupOptions=groups.filter(g=>g.program_id===program);
- const tiles=[{name:'Iniciación',icon:Sprout},{name:'Perfeccionamiento',icon:Target},{name:'Tecnificación',icon:Activity},{name:'Competición',icon:Trophy},{name:'Adultos',icon:Users}];
+ const tiles=[{name:'Mini tenis',icon:Sprout},{name:'Desarrollo',icon:Target},{name:'Iniciación',icon:Sprout},{name:'Perfeccionamiento',icon:Target},{name:'Tecnificación',icon:Activity},{name:'Competición',icon:Trophy},{name:'Adultos',icon:Users}];
  const activeClub=clubs.find(c=>c.id===club);
  const card:React.CSSProperties={background:'#fff',border:'1px solid #e7e8eb',borderRadius:18,padding:22,boxShadow:'0 4px 20px rgba(15,23,42,.035)'};
  const smallLabel:React.CSSProperties={display:'block',fontSize:12,fontWeight:750,color:'#64748b',marginBottom:7};
@@ -49,7 +50,7 @@ export default function SchoolManager090({userId}:{userId:string}){
   </div>
   {error&&<div role="alert" style={{...card,color:'#b91c1c',borderColor:'#fecaca'}}>{error}</div>}{notice&&<div role="status" style={{...card,color:'#15803d',display:'flex',gap:10,alignItems:'center'}}><CheckCircle2 size={19}/>{notice}</div>}
   {!club&&<div style={card}>No se ha encontrado un club autorizado para este usuario.</div>}
-  {club&&<div style={{display:'grid',gridTemplateColumns:'minmax(165px,210px) minmax(0,1fr)',gap:12,alignItems:'start'}}><nav aria-label="Menú de escuelas" style={{...card,padding:10,display:'grid',gap:5,position:'sticky',top:12}}>{([{id:'resumen',label:'Resumen'},{id:'programas',label:'Programas'},{id:'grupos',label:'Grupos'},{id:'pistas',label:'Instalaciones'},{id:'parrilla',label:'Parrilla semanal'},{id:'alumnos',label:'Alumnos'},{id:'entrenadores',label:'Entrenadores'},{id:'facturacion',label:'Facturación'}] as const).map(n=><button key={n.id} type="button" onClick={()=>setSection(n.id)} style={{textAlign:'left',padding:'12px 9px',border:0,borderRadius:9,cursor:'pointer',background:section===n.id?'#fff0f2':'transparent',color:section===n.id?'#b50e2b':'#334155',fontWeight:section===n.id?800:550,fontSize:13}}>{n.label}</button>)}</nav><div style={{minWidth:0,display:'grid',gap:16}}>
+  {club&&<div style={{display:'grid',gridTemplateColumns:'minmax(165px,210px) minmax(0,1fr)',gap:12,alignItems:'start'}}><nav aria-label="Menú de escuelas" style={{...card,padding:10,display:'grid',gap:5,position:'sticky',top:12,background:'linear-gradient(160deg,#172033,#27384d)',border:'1px solid #344459'}}>{([{id:'resumen',label:'Resumen'},{id:'programas',label:'Programas'},{id:'grupos',label:'Grupos'},{id:'pistas',label:'Instalaciones'},{id:'parrilla',label:'Parrilla semanal'},{id:'alumnos',label:'Alumnos'},{id:'entrenadores',label:'Entrenadores'},{id:'facturacion',label:'Facturación'},{id:'tienda',label:'Tienda y stock'}] as const).map(n=><button key={n.id} type="button" onClick={()=>setSection(n.id)} style={{textAlign:'left',padding:'12px 9px',border:0,borderRadius:9,cursor:'pointer',background:section===n.id?'#fff':'transparent',color:section===n.id?'#b50e2b':'#e2e8f0',fontWeight:section===n.id?800:550,fontSize:13}}>{n.label}</button>)}</nav><div style={{minWidth:0,display:'grid',gap:16}}>
   {section==='resumen'&&<div style={card}><h3 style={{marginTop:0}}>Resumen de escuelas</h3><p style={{color:'#64748b'}}>Selecciona una opción del menú para consultar o editar cada área de forma independiente.</p><p><strong>{programOptions.length}</strong> programas · <strong>{groups.filter(g=>programOptions.some(p=>p.id===g.program_id)).length}</strong> grupos</p></div>}
   {(['alumnos','entrenadores','facturacion'] as const).includes(section as 'alumnos'|'entrenadores'|'facturacion')&&<div style={card}><h3 style={{marginTop:0}}>{section==='alumnos'?'Alumnos':section==='entrenadores'?'Entrenadores':'Facturación'}</h3><p style={{color:'#64748b'}}>Apartado reservado para una próxima versión. No se han habilitado todavía operaciones ni datos personales.</p></div>}
   {club&&!school&&<div style={{...card,display:'grid',gap:12}}><h3 style={{margin:0}}>Preparar la gestión de actividades</h3><p style={{margin:0,color:'#64748b'}}>Activaremos la organización interna de {activeClub?.name}. No se creará otro club ni tendrás que introducir su nombre.</p><button style={{...action,justifySelf:'start'}} disabled={busy} onClick={()=>void run('racketon_create_school_090',{p_club:club,p_name:activeClub?.name||'Escuela del club',p_sport:'tenis'},'Gestión de actividades activada',setSchool)}><Plus size={17}/> Activar programas</button></div>}
@@ -63,6 +64,7 @@ export default function SchoolManager090({userId}:{userId:string}){
     <button style={action} disabled={busy||!seasonName.trim()||!start||!end} onClick={()=>void run('racketon_create_season_090',{p_school:school,p_name:seasonName,p_start:start,p_end:end},'Temporada creada',setSeason)}><Plus size={17}/> Crear temporada</button>
    </div>
   </div>}
+  {school&&!season&&section==='programas'&&<div style={card}><strong>Primero debes seleccionar o crear una temporada.</strong><p style={{color:'#64748b'}}>Los programas pertenecen a una temporada. Usa el formulario superior y, después, podrás crear Mini tenis, Desarrollo o cualquier otro programa.</p></div>}
   {season&&section==='programas'&&<div style={{...card,display:'grid',gap:18}}>
    <div><h3 style={{fontSize:22,margin:'0 0 5px'}}>Programas de actividades</h3><p style={{margin:0,color:'#64748b',fontSize:14}}>Selecciona un programa para organizar sus grupos o crea uno nuevo.</p></div>
    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(170px,1fr))',gap:12}}>
@@ -78,8 +80,10 @@ export default function SchoolManager090({userId}:{userId:string}){
    <div style={{display:'flex',flexWrap:'wrap',gap:12,alignItems:'end'}}><label style={{flex:'2 1 230px'}}><span style={smallLabel}>Nombre del grupo</span><input style={field} value={groupName} onChange={e=>setGroupName(e.target.value)} placeholder="Ej.: Tecnificación A"/></label><label style={{flex:'1 1 120px'}}><span style={smallLabel}>Plazas máximas</span><input style={field} type="number" min={1} max={100} value={capacity} onChange={e=>setCapacity(Number(e.target.value))}/></label><button style={action} disabled={busy||groupName.trim().length<2||capacity<1||capacity>100} onClick={()=>void run('racketon_create_group_090',{p_program:program,p_name:groupName,p_capacity:capacity},'Grupo creado',()=>setGroupName(''))}><Plus size={17}/> Crear grupo</button></div>
    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:10}}>{groupOptions.map(g=><div key={g.id} style={{border:'1px solid #e7e8eb',borderRadius:12,padding:16,display:'flex',gap:12,alignItems:'center'}}><Users size={22} color='#c8102e'/><div><strong>{g.name}</strong><div style={{fontSize:12,color:'#64748b',marginTop:3}}>Capacidad: {g.capacity} plazas</div></div></div>)}{!groupOptions.length&&<div style={{padding:16,color:'#64748b',background:'#f8fafc',borderRadius:12}}>Aún no hay grupos en este programa.</div>}</div>
   </div>}
+  {club&&section==='tienda'&&<ClubStoreInventory096 clubId={club}/>}
   {club&&section==='pistas'&&<ClubCourtsVisual093 clubId={club} seasonId={season}/>}
   {club&&season&&section==='parrilla'&&<SchoolSchedule092 clubId={club} seasonId={season}/>}
+  {club&&!season&&section==='parrilla'&&<div style={card}>Selecciona o crea una temporada en Programas para consultar la parrilla.</div>}
   </div></div>}
   <div style={{display:'flex',alignItems:'center',gap:9,color:'#64748b',fontSize:12,padding:'0 4px'}}><ShieldCheck size={17}/> Los datos se guardan en el club autorizado. Esta fase todavía no incluye alumnos ni matrículas.</div>
  </section>;
