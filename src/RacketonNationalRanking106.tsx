@@ -8,7 +8,7 @@ type Sport='Tenis'|'Pádel'|'Pickleball';
 type Row={position:number;user_id:string;display_name:string;country:string;city:string;rating:number;rating_status:string;matches_played:number};
 const input:React.CSSProperties={width:'100%',boxSizing:'border-box',padding:'10px 12px',border:'1px solid #d8d8df',borderRadius:9,background:'#fff',fontSize:14};
 const statusLabel=(s:string)=>s==='consolidated'?'Consolidado':s==='calibrating'?'En calibración':'Provisional';
-export default function RacketonNationalRanking106({userId}:{userId:string}){
+export default function RacketonNationalRanking106({userId,onChallenge}:{userId:string;onChallenge:(player:{id:string;name:string})=>void}){
  const [sport,setSport]=useState<Sport>('Tenis');
  const [country,setCountry]=useState('');const [city,setCity]=useState('');const [status,setStatus]=useState('all');
  const [rows,setRows]=useState<Row[]>([]);const [page,setPage]=useState(0);const [busy,setBusy]=useState(false);const [error,setError]=useState('');
@@ -22,7 +22,7 @@ export default function RacketonNationalRanking106({userId}:{userId:string}){
  useEffect(()=>{if(sport!=='Tenis')void load(0);},[load,sport,userId]);
  return <section style={{maxWidth:1100,margin:'0 auto'}}>
   <div style={{display:'flex',gap:9,flexWrap:'wrap',margin:'0 0 20px'}}>{(['Tenis','Pádel','Pickleball'] as Sport[]).map(s=><button type="button" key={s} onClick={()=>{setSport(s);setPage(0);setRows([]);setError('');}} style={{padding:'12px 20px',borderRadius:12,border:s===sport?'2px solid #c8102e':'1px solid #dedee3',background:s===sport?'#fff1f2':'white',fontWeight:700,cursor:'pointer',color:'#20202a'}}>{s}</button>)}</div>
-  {sport==='Tenis'?<TennisLeaderboard userId={userId}/>:<div style={{background:'white',border:'1px solid #e7e7eb',borderRadius:16,padding:'clamp(14px,3vw,24px)'}}>
+  {sport==='Tenis'?<TennisLeaderboard userId={userId} onChallenge={onChallenge}/>:<div style={{background:'white',border:'1px solid #e7e7eb',borderRadius:16,padding:'clamp(14px,3vw,24px)'}}>
    <div style={{display:'flex',alignItems:'center',gap:12}}><Trophy color="#c8102e"/><div><h2 style={{margin:0}}>Clasificación RACKETON · {sport}</h2><p style={{margin:'6px 0 0',fontSize:13,color:'#64748b'}}>Escala {sport==='Pádel'?'0–7':'2–8'} · rating propio RACKETON, no oficial de plataformas externas</p></div></div>
    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(160px,1fr))',gap:12,margin:'20px 0'}}>
     <label style={{fontSize:13,fontWeight:600}}>País<CountrySelect includeAll style={input} value={country} onChange={setCountry}/></label>
