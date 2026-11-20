@@ -6,6 +6,7 @@ import type { LucideIcon } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import { configured, supabase } from './supabase';
 import LevelAssessment from './LevelAssessmentAdvanced';
+import RacketSportAssessment105 from './RacketSportAssessment105';
 import PlayerSearch from './PlayerSearch';
 import { CountrySelect } from './CountrySelect';
 import TennisChallenges from './TennisChallenges';
@@ -147,7 +148,8 @@ function PlayerProfile({user}:{user:User}) {
       <div><h2 style={{margin:'0 0 6px'}}>Mis deportes</h2><p style={{color:'#666',margin:'0 0 14px'}}>Activa los deportes que practicas. El nivel seleccionado es una declaración personal; realiza el test para obtener una valoración provisional.</p>
         <div style={{display:'grid',gap:10}}>{sportNames.map(name=><div key={name} style={{display:'flex',flexWrap:'wrap',alignItems:'center',justifyContent:'space-between',gap:12,padding:14,border:'1px solid #e5e5e9',borderRadius:10,background:details.sports[name].enabled?'#fff5f6':'#fafafa'}}><label style={{display:'flex',alignItems:'center',gap:10,fontWeight:700,cursor:'pointer'}}><input type="checkbox" checked={details.sports[name].enabled} onChange={e=>changeSport(name,{enabled:e.target.checked})} style={{accentColor:'#C8102E',width:18,height:18}}/>{name}</label><select aria-label={'Nivel de '+name} disabled={!details.sports[name].enabled} style={{...fieldStyle,width:180,marginTop:0,opacity:details.sports[name].enabled?1:.5}} value={details.sports[name].level} onChange={e=>changeSport(name,{level:e.target.value as SportLevel})}><option>Sin evaluar</option><option>Iniciación</option><option>Intermedio</option><option>Avanzado</option><option>Competición</option></select></div>)}</div>
       </div>
-      <LevelAssessment userId={user.id} enabledSports={sportNames.filter(name=>details.sports[name].enabled)} />
+      <LevelAssessment userId={user.id} enabledSports={sportNames.filter(name=>name==='Tenis' && details.sports[name].enabled)} />
+      <RacketSportAssessment105 userId={user.id} enabledSports={sportNames.filter(name=>(name==='Pádel'||name==='Pickleball') && details.sports[name].enabled)} />
       <div style={{display:'grid',gap:12,padding:16,border:'1px solid #e4e4e9',borderRadius:12,background:'#fafafa'}}><h2 style={{margin:0}}>Visibilidad en el buscador de tenis</h2><label style={labelStyle}>País de residencia<CountrySelect style={fieldStyle} value={country} onChange={setCountry}/></label><label style={labelStyle}>Nacionalidad (opcional)<CountrySelect style={fieldStyle} value={nationality} onChange={setNationality}/></label><label style={{display:'flex',alignItems:'center',gap:8,fontSize:14}}><input type="checkbox" checked={showNationality} onChange={e=>setShowNationality(e.target.checked)} /> Mostrar mi nacionalidad a otros jugadores</label><label style={{display:'flex',alignItems:'flex-start',gap:10,fontSize:14}}><input type="checkbox" checked={discoverable} onChange={e=>setDiscoverable(e.target.checked)} style={{marginTop:4,accentColor:'#c8102e'}}/><span><strong>Quiero aparecer en el buscador de jugadores</strong><br/>Se mostrarán mi nombre deportivo, ciudad, país, rating, estado, modalidad y disponibilidad. La nacionalidad solo se mostrará si lo autorizo. No se mostrarán mi email, edad ni respuestas del cuestionario. Puedo desactivar esta opción cuando quiera.</span></label>{discoverable&&(!country.trim()||!details.city.trim()||!details.display_name.trim())&&<p style={{color:'#a43d18',margin:0,fontSize:13}}>Para aparecer en los resultados, completa nombre deportivo, ciudad y país y guarda el perfil.</p>}</div>
       <label style={labelStyle}>Disponibilidad para jugar<textarea style={{...fieldStyle,minHeight:90,resize:'vertical'}} maxLength={500} value={details.availability} onChange={e=>change('availability',e.target.value)} placeholder="Ej. Tardes entre semana y sábados por la mañana"/></label>
       <div style={{display:'flex',alignItems:'center',flexWrap:'wrap',gap:14}}><button className="primary" type="submit" disabled={saving}>{saving?'Guardando...':'Guardar mi perfil'} <ArrowRight size={17}/></button>{message&&<span role="status" style={{color:message.startsWith('¡')?'#137442':'#b42332',fontWeight:600}}>{message}</span>}</div>
@@ -160,6 +162,7 @@ const launchSports:PlayerHomeSport[]=['Tenis','Pádel','Pickleball'];
 function PlayerHome102({user,onNavigate}:{user:User;onNavigate:(tab:Tab)=>void}){
  const [sport,setSport]=useState<PlayerHomeSport>('Tenis');
  const [rating,setRating]=useState<{rating:number;status:string;matches_played:number}|null>(null);
+ const [otherRatings,setOtherRatings]=useState<Record<string,{rating:number;status:string;matches_played:number}>>({});
  const [name,setName]=useState('');
  const [homePhoto,setHomePhoto]=useState('');
  const [enabled,setEnabled]=useState<Record<string,boolean>>({});
@@ -173,11 +176,12 @@ function PlayerHome102({user,onNavigate}:{user:User;onNavigate:(tab:Tab)=>void})
    if(!supabase)return;
    setLoading(true);setError('');
    const client=supabase;
-   const [profileResult,ratingResult,incomingResult,historyResult]=await Promise.all([
+   const [profileResult,ratingResult,incomingResult,historyResult,otherResult]=await Promise.all([
     client.from('player_details').select('display_name,sports,photo_url').eq('user_id',user.id).maybeSingle(),
     client.from('tennis_ratings').select('rating,status,matches_played').eq('user_id',user.id).maybeSingle(),
     client.from('tennis_challenges').select('id',{count:'exact',head:true}).eq('challenged_id',user.id).eq('status','pending'),
-    client.rpc('my_tennis_rating_history_072')
+    client.rpc('my_tennis_rating_history_072'),
+    client.from('racket_sport_ratings').select('sport,rating,status,matches_played').eq('user_id',user.id)
    ]);
    if(!active)return;
    if(profileResult.error)setError('No se pudo cargar el perfil deportivo.');
@@ -187,6 +191,7 @@ function PlayerHome102({user,onNavigate}:{user:User;onNavigate:(tab:Tab)=>void})
    setEnabled(Object.fromEntries(launchSports.map(x=>[x,sports?.[x]?.enabled===true])));
    if(ratingResult.error)setError('No se pudo cargar el rating de tenis.');
    setRating(ratingResult.data?{rating:Number(ratingResult.data.rating),status:String(ratingResult.data.status),matches_played:Number(ratingResult.data.matches_played)}:null);
+   if(!otherResult.error)setOtherRatings(Object.fromEntries((otherResult.data??[]).map((x:{sport:string;rating:number;status:string;matches_played:number})=>[x.sport,{rating:Number(x.rating),status:x.status,matches_played:Number(x.matches_played)}])));
    if(incomingResult.error)setError('No se pudieron consultar todos los desafíos.');
    setHomePhoto(typeof profileResult.data?.photo_url==='string'?profileResult.data.photo_url:'');
    setPending(incomingResult.error?null:incomingResult.count??0);
@@ -197,6 +202,7 @@ function PlayerHome102({user,onNavigate}:{user:User;onNavigate:(tab:Tab)=>void})
   void load();return()=>{active=false};
  },[user.id]);
  const selectedEnabled=enabled[sport]===true;
+ const activeRating=sport==='Tenis'?rating:otherRatings[sport]??null;
  const card:React.CSSProperties={background:'#fff',border:'1px solid #e2e8f0',borderRadius:18,padding:22,boxShadow:'0 4px 18px #0f172a08'};
  const action:React.CSSProperties={padding:'12px 16px',background:'#c8102e',border:0,borderRadius:10,color:'#fff',fontWeight:700,cursor:'pointer'};
  return <section className="content interior" style={{maxWidth:1160,margin:'24px auto 60px'}}>
@@ -207,16 +213,16 @@ function PlayerHome102({user,onNavigate}:{user:User;onNavigate:(tab:Tab)=>void})
   {error&&<p role="status" style={{background:'#fff1f2',color:'#9f1239',padding:12,borderRadius:9}}>{error}</p>}
   {loading?<p>Cargando tus datos deportivos…</p>:<>
    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(210px,1fr))',gap:15}}>
-    <div style={card}><div style={{color:'#64748b',fontSize:13,fontWeight:700}}>RATING · {sport.toUpperCase()}</div><div style={{fontSize:38,fontWeight:850,margin:'10px 0 4px',color:'#c8102e'}}>{sport==='Tenis'&&rating?rating.rating.toFixed(2):'—'}</div><div style={{color:'#64748b',fontSize:13}}>{sport==='Tenis'&&rating?({provisional:'Provisional',calibrating:'En calibración',consolidated:'Consolidado'}[rating.status]??rating.status):'Sin rating disponible'}</div></div>
-    <div style={card}><div style={{color:'#64748b',fontSize:13,fontWeight:700}}>PARTIDOS DE RANKING · {sport.toUpperCase()}</div><div style={{fontSize:38,fontWeight:850,margin:'10px 0 4px'}}>{sport==='Tenis'&&rating?rating.matches_played:'—'}</div><div style={{color:'#64748b',fontSize:13}}>{sport==='Tenis'?'Partidos computados en el rating':'Pendiente de activar el sistema competitivo'}</div></div>
+    <div style={card}><div style={{color:'#64748b',fontSize:13,fontWeight:700}}>RATING · {sport.toUpperCase()}</div><div style={{fontSize:38,fontWeight:850,margin:'10px 0 4px',color:'#c8102e'}}>{activeRating?activeRating.rating.toFixed(2):'—'}</div><div style={{color:'#64748b',fontSize:13}}>{activeRating?({provisional:'Provisional',calibrating:'En calibración',consolidated:'Consolidado'}[activeRating.status]??activeRating.status):'Sin rating disponible'}</div></div>
+    <div style={card}><div style={{color:'#64748b',fontSize:13,fontWeight:700}}>PARTIDOS DE RANKING · {sport.toUpperCase()}</div><div style={{fontSize:38,fontWeight:850,margin:'10px 0 4px'}}>{activeRating?activeRating.matches_played:'—'}</div><div style={{color:'#64748b',fontSize:13}}>{sport==='Tenis'?'Partidos computados en el rating':'Partidos competitivos: integración pendiente'}</div></div>
     <div style={card}><div style={{color:'#64748b',fontSize:13,fontWeight:700}}>DESAFÍOS RECIBIDOS · TENIS</div><div style={{fontSize:38,fontWeight:850,margin:'10px 0 4px'}}>{pending??'—'}</div><button type="button" onClick={()=>onNavigate('Desafíos')} style={{background:'transparent',border:0,padding:0,color:'#c8102e',fontWeight:750,cursor:'pointer'}}>Ver desafíos →</button></div>
    </div>
    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(300px,1fr))',gap:16,marginTop:20}}>
-    <div style={card}><h2 style={{margin:'0 0 10px',fontSize:22}}>Tu deporte: {sport}</h2><p style={{color:'#64748b',lineHeight:1.6}}>{!selectedEnabled?'Todavía no has activado este deporte en tu perfil.':sport==='Tenis'?(rating?'Tu rating de tenis está conectado con tus resultados confirmados.':'Completa la evaluación inicial para obtener tu rating provisional de tenis.'):'Tu deporte está activado. La clasificación nacional y el rating específico se incorporarán en las siguientes versiones.'}</p><button type="button" onClick={()=>onNavigate('Perfil')} style={action}>{!selectedEnabled?'Activar deporte en mi perfil':sport==='Tenis'&&!rating?'Completar mi evaluación':'Ver mi perfil deportivo'}</button></div>
+    <div style={card}><h2 style={{margin:'0 0 10px',fontSize:22}}>Tu deporte: {sport}</h2><p style={{color:'#64748b',lineHeight:1.6}}>{!selectedEnabled?'Todavía no has activado este deporte en tu perfil.':sport==='Tenis'?(rating?'Tu rating de tenis está conectado con tus resultados confirmados.':'Completa la evaluación inicial para obtener tu rating provisional de tenis.'):(activeRating?'Tu rating inicial de '+sport+' ya está disponible. Puedes buscar rivales de un nivel similar.':'Completa el cuestionario específico de '+sport+' para obtener tu rating provisional.')}</p><button type="button" onClick={()=>onNavigate('Perfil')} style={action}>{!selectedEnabled?'Activar deporte en mi perfil':sport==='Tenis'&&!rating?'Completar mi evaluación':'Ver mi perfil deportivo'}</button></div>
     <div style={card}><h2 style={{margin:'0 0 12px',fontSize:22}}>Accesos rápidos</h2><div style={{display:'grid',gridTemplateColumns:'repeat(2,minmax(0,1fr))',gap:10}}>{([{label:'Buscar rivales',dest:'Jugadores'},{label:'Rankings',dest:'Rankings'},{label:'Mis desafíos',dest:'Desafíos'},{label:'Mis ligas',dest:'Mis ligas'},{label:'Torneos',dest:'Torneos'},{label:'Mi perfil',dest:'Perfil'}] as {label:string;dest:Tab}[]).map(x=><button key={x.dest} onClick={()=>onNavigate(x.dest)} style={{padding:'13px 8px',background:'#f8fafc',border:'1px solid #e2e8f0',borderRadius:10,color:'#172033',fontWeight:700,cursor:'pointer'}}>{x.label} →</button>)}</div></div>
    </div>
    <div style={{...card,marginTop:18}}><h2 style={{margin:'0 0 14px',fontSize:22}}>Últimos partidos · Tenis</h2>{recent.length?recent.map((x,i)=><div key={i} style={{display:'flex',justifyContent:'space-between',gap:12,borderTop:'1px solid #e2e8f0',padding:'12px 0',flexWrap:'wrap'}}><span><strong>{x.won?'Victoria':'Derrota'}</strong> · {x.opponent_name}</span><span style={{color:'#64748b'}}>{new Date(x.played_at).toLocaleDateString('es-ES')} · Rating {x.rating_delta>0?'+':''}{x.rating_delta.toFixed(2)}</span></div>):<p style={{color:'#64748b'}}>Todavía no hay partidos de tenis confirmados en tu historial.</p>}<button type="button" onClick={()=>onNavigate('Desafíos')} style={{background:'transparent',border:0,color:'#c8102e',fontWeight:700,cursor:'pointer',padding:0}}>Ver resultados e historial →</button></div>
-   <p style={{fontSize:12,color:'#64748b',marginTop:15}}>Los datos competitivos mostrados corresponden al sistema de tenis existente. Pádel y pickleball no tienen todavía rating nacional operativo; no se muestran puntuaciones simuladas.</p>
+   <p style={{fontSize:12,color:'#64748b',marginTop:15}}>Tenis: rating competitivo existente. Pádel (escala 0–7) y pickleball (2–8): rating inicial RACKETON, no oficial de Playtomic ni DUPR. Los resultados competitivos de estos dos deportes se incorporarán después.</p>
   </>}
  </section>;
 }
