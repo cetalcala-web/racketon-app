@@ -46,7 +46,7 @@ export default function RacketSportAssessment104({userId,enabledSports}:{userId:
  {QUESTIONS[sport].slice(page*5,page*5+5).map((question,i)=>{const index=page*5+i;return <label key={index} style={{display:'grid',gap:6,fontWeight:650,fontSize:14}}>{index+1}. {question}<select style={field} value={answers[index]===null?'':String(answers[index])} onChange={e=>setAnswers(old=>old.map((v,j)=>j===index?Number(e.target.value):v))}><option value="" disabled>Selecciona una respuesta</option>{options(index).map((o,n)=><option value={n} key={n}>{o}</option>)}</select></label>})}
  <div style={{display:'flex',gap:10,justifyContent:'space-between'}}><button type="button" disabled={page===0} onClick={()=>setPage(x=>Math.max(0,x-1))} style={{...field,width:'auto',cursor:'pointer'}}>Anterior</button><button type="button" disabled={page===3} onClick={()=>setPage(x=>Math.min(3,x+1))} style={{...field,width:'auto',cursor:'pointer'}}>Siguiente</button></div>
  <button type="button" className="primary" disabled={busy||completed!==20||locked||loading} onClick={()=>void save()}>{busy?'Guardando…':'Finalizar evaluación y asignar rating'}</button>
- </>
+ </>}
  {notice&&<p role="status" style={{color:notice.startsWith('Error')?'#b42332':'#166534',margin:0}}>{notice}</p>}
  <p style={{fontSize:12,color:'#64748b',margin:0}}>La autoevaluación sirve para encontrar rivales aproximados. Se validará y calibrará con resultados de partidos confirmados. No existe conversión oficial a Playtomic o DUPR.</p>
  </section>
