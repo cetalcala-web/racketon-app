@@ -5,7 +5,7 @@ import { supabase } from './supabase';
 type Player = { user_id: string; display_name: string; country: string; city: string; rating: number; rating_status: string; matches_played: number; preferred_format: string; availability: string };
 const inputStyle: React.CSSProperties = { width: '100%', boxSizing: 'border-box', border: '1px solid #dedee3', borderRadius: 9, padding: '11px 12px', fontSize: 15, background: '#fff', color: '#24242a' };
 const labelStyle: React.CSSProperties = { display: 'grid', gap: 6, fontWeight: 650, fontSize: 13 };
-export default function PlayerSearch({ userId }: { userId: string }) {
+export default function PlayerSearch({ userId, onChallenge }: { userId: string; onChallenge?: (player: { id: string; name: string }) => void }) {
  const [country, setCountry] = useState(''); const [city, setCity] = useState('');
  const [min, setMin] = useState('1'); const [max, setMax] = useState('20');
  const [availability, setAvailability] = useState('');
@@ -43,6 +43,7 @@ export default function PlayerSearch({ userId }: { userId: string }) {
    <div style={{fontSize:13,color:'#555'}}>Partidos registrados: {p.matches_played} · {p.preferred_format}</div>
    {p.availability&&<div style={{fontSize:14,background:'#f7f7f8',padding:10,borderRadius:8}}>Disponibilidad: {p.availability}</div>}
    <div style={{display:'flex',gap:6,alignItems:'center',fontSize:12,color:'#667'}}><ShieldCheck size={14}/> Perfil visible por decisión del jugador</div>
+   {onChallenge && p.user_id !== userId && <button type="button" className="primary" onClick={() => onChallenge({id:p.user_id,name:p.display_name})}>Proponer desafío</button>}
   </article>)}</div>
   {!searched&&<div style={{textAlign:'center',padding:40,color:'#777'}}><Users size={36} style={{margin:'0 auto 12px'}}/><p>Utiliza los filtros para encontrar jugadores de tenis.</p></div>}
  </div>;
