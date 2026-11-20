@@ -1,3 +1,5 @@
+import ClubCourtsVisual093 from './ClubCourtsVisual093';
+import SchoolSchedule092 from './SchoolSchedule092';
 import {useCallback,useEffect,useState} from 'react';
 import {supabase} from './supabase';
 import { GraduationCap, Sprout, Target, Activity, Trophy, Users, Plus, CalendarDays, ChevronRight, Layers3, CheckCircle2, ShieldCheck } from 'lucide-react';
@@ -71,6 +73,8 @@ export default function SchoolManager090({userId}:{userId:string}){
    <div style={{display:'flex',flexWrap:'wrap',gap:12,alignItems:'end'}}><label style={{flex:'2 1 230px'}}><span style={smallLabel}>Nombre del grupo</span><input style={field} value={groupName} onChange={e=>setGroupName(e.target.value)} placeholder="Ej.: Tecnificación A"/></label><label style={{flex:'1 1 120px'}}><span style={smallLabel}>Plazas máximas</span><input style={field} type="number" min={1} max={100} value={capacity} onChange={e=>setCapacity(Number(e.target.value))}/></label><button style={action} disabled={busy||groupName.trim().length<2||capacity<1||capacity>100} onClick={()=>void run('racketon_create_group_090',{p_program:program,p_name:groupName,p_capacity:capacity},'Grupo creado',()=>setGroupName(''))}><Plus size={17}/> Crear grupo</button></div>
    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:10}}>{groupOptions.map(g=><div key={g.id} style={{border:'1px solid #e7e8eb',borderRadius:12,padding:16,display:'flex',gap:12,alignItems:'center'}}><Users size={22} color='#c8102e'/><div><strong>{g.name}</strong><div style={{fontSize:12,color:'#64748b',marginTop:3}}>Capacidad: {g.capacity} plazas</div></div></div>)}{!groupOptions.length&&<div style={{padding:16,color:'#64748b',background:'#f8fafc',borderRadius:12}}>Aún no hay grupos en este programa.</div>}</div>
   </div>}
+  {club&&season&&<ClubCourtsVisual093 clubId={club} seasonId={season}/>}
+  {club&&season&&<SchoolSchedule092 clubId={club} seasonId={season}/>}
   <div style={{display:'flex',alignItems:'center',gap:9,color:'#64748b',fontSize:12,padding:'0 4px'}}><ShieldCheck size={17}/> Los datos se guardan en el club autorizado. Esta fase todavía no incluye alumnos ni matrículas.</div>
  </section>;
 }
