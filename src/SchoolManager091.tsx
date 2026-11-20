@@ -6,13 +6,12 @@ type School={id:string;club_id:string;name:string;sport:string};
 type Season={id:string;school_id:string;name:string;starts_on:string;ends_on:string};
 type Program={id:string;season_id:string;name:string};
 type Group={id:string;program_id:string;name:string;capacity:number};
-const panel:React.CSSProperties={padding:18,border:'1px solid #e4e4e7',borderRadius:14,background:'#fff',display:'grid',gap:12};
 const field:React.CSSProperties={padding:11,border:'1px solid #ddd',borderRadius:9,width:'100%',boxSizing:'border-box'};
 const btn:React.CSSProperties={padding:'11px 16px',background:'#c8102e',color:'#fff',border:0,borderRadius:9,fontWeight:700,cursor:'pointer'};
 export default function SchoolManager090({userId}:{userId:string}){
  const [clubs,setClubs]=useState<Club[]>([]),[schools,setSchools]=useState<School[]>([]),[seasons,setSeasons]=useState<Season[]>([]),[programs,setPrograms]=useState<Program[]>([]),[groups,setGroups]=useState<Group[]>([]);
  const [club,setClub]=useState(''),[school,setSchool]=useState(''),[season,setSeason]=useState(''),[program,setProgram]=useState('');
- const [name,setName]=useState(''),[sport,setSport]=useState('tenis'),[seasonName,setSeasonName]=useState('2026/27'),[start,setStart]=useState('2026-09-01'),[end,setEnd]=useState('2027-06-30'),[programName,setProgramName]=useState(''),[groupName,setGroupName]=useState(''),[capacity,setCapacity]=useState(8);
+ const [seasonName,setSeasonName]=useState('2026/27'),[start,setStart]=useState('2026-09-01'),[end,setEnd]=useState('2027-06-30'),[programName,setProgramName]=useState(''),[groupName,setGroupName]=useState(''),[capacity,setCapacity]=useState(8);
  const [error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
  const load=useCallback(async()=>{const db=supabase;if(!db){setError('Supabase no está configurado');return}
  const results=await Promise.all([
@@ -31,7 +30,7 @@ export default function SchoolManager090({userId}:{userId:string}){
  useEffect(()=>{if(!programs.some(p=>p.id===program&&p.season_id===season))setProgram('')},[programs,program,season]);
  async function run(fn:string,args:Record<string,unknown>,message:string,after?:(id:string)=>void){const db=supabase;if(!db)return;setBusy(true);setError('');setNotice('');
  const {data,error:e}=await db.rpc(fn,args);if(e)setError(e.message);else{await load();setNotice(message);if(after&&typeof data==='string')after(data)}setBusy(false)}
- const schoolOptions=schools.filter(s=>s.club_id===club),seasonOptions=seasons.filter(s=>s.school_id===school),programOptions=programs.filter(p=>p.season_id===season),groupOptions=groups.filter(g=>g.program_id===program);
+ const seasonOptions=seasons.filter(s=>s.school_id===school),programOptions=programs.filter(p=>p.season_id===season),groupOptions=groups.filter(g=>g.program_id===program);
  const tiles=[{name:'Iniciación',icon:Sprout},{name:'Perfeccionamiento',icon:Target},{name:'Tecnificación',icon:Activity},{name:'Competición',icon:Trophy},{name:'Adultos',icon:Users}];
  const activeClub=clubs.find(c=>c.id===club);
  const card:React.CSSProperties={background:'#fff',border:'1px solid #e7e8eb',borderRadius:18,padding:22,boxShadow:'0 4px 20px rgba(15,23,42,.035)'};
