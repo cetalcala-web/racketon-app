@@ -65,18 +65,21 @@ function PlayerProfile({user}:{user:User}) {
   const [country,setCountry] = useState('');
   const [nationality,setNationality] = useState('');
   const [showNationality,setShowNationality] = useState(false);
+  const [photoUrl,setPhotoUrl] = useState('');
+  const [photoBusy,setPhotoBusy] = useState(false);
   useEffect(()=>{
     let active=true;
     async function load(){
       if(!supabase)return;
       setLoading(true);setMessage('');
-      const {data,error}=await supabase.from('player_details').select('display_name,city,birth_year,preferred_format,availability,sports').eq('user_id',user.id).maybeSingle();
+      const {data,error}=await supabase.from('player_details').select('display_name,city,birth_year,preferred_format,availability,sports,photo_url').eq('user_id',user.id).maybeSingle();
       if(!active)return;
       if(error){setMessage('No se pudo cargar el perfil: '+error.message)}
       else if(data){
         const savedSports=data.sports && typeof data.sports==='object' ? data.sports as Record<string, Partial<SportChoice>> : {};
         const sports=defaultSports();
         for(const name of sportNames){const saved=savedSports[name];if(saved){sports[name]={enabled:saved.enabled===true,level:(['Sin evaluar','Iniciación','Intermedio','Avanzado','Competición'].includes(String(saved.level))?saved.level:'Sin evaluar') as SportLevel}}}
+        setPhotoUrl(typeof data.photo_url==='string'?data.photo_url:'');
         setDetails({display_name:data.display_name??'',city:data.city??'',birth_year:data.birth_year==null?'':String(data.birth_year),preferred_format:data.preferred_format??'Individual y dobles',availability:data.availability??'',sports});
       }
       const {data:visibility,error:visibilityError}=await supabase.from('player_discovery_preferences').select('discoverable,country,nationality,show_nationality').eq('user_id',user.id).maybeSingle();
@@ -87,6 +90,32 @@ function PlayerProfile({user}:{user:User}) {
     }
     void load();return()=>{active=false};
   },[user.id]);
+  async function uploadPhoto(file:File){
+    if(!supabase)return;
+    if(!['image/jpeg','image/png','image/webp'].includes(file.type)){setMessage('Selecciona JPG, PNG o WebP.');return;}
+    if(file.size>2*1024*1024){setMessage('La fotografía debe ocupar menos de 2 MB.');return;}
+    const year=Number(details.birth_year);
+    if(!details.birth_year||!Number.isInteger(year)||new Date().getFullYear()-year<19){setMessage('Por ahora, la fotografía pública solo está disponible para mayores de edad con año de nacimiento indicado.');return;}
+    if(!discoverable){setMessage('Para publicar tu foto, activa primero la visibilidad en el buscador y guarda tu perfil.');return;}
+    setPhotoBusy(true);setMessage('');
+    const extension=file.type==='image/png'?'png':file.type==='image/webp'?'webp':'jpg';
+    const path=`${user.id}/avatar.${extension}`;
+    const {error:uploadError}=await supabase.storage.from('racketon-player-photos').upload(path,file,{upsert:true,contentType:file.type,cacheControl:'60'});
+    if(uploadError){setMessage('Error al subir foto: '+uploadError.message);setPhotoBusy(false);return;}
+    const url=supabase.storage.from('racketon-player-photos').getPublicUrl(path).data.publicUrl+'?v='+Date.now();
+    const {error:saveError}=await supabase.from('player_details').upsert({user_id:user.id,photo_url:url},{onConflict:'user_id'});
+    if(saveError){setMessage('Foto subida, pero no se pudo asociar: '+saveError.message);}
+    else{setPhotoUrl(url);setMessage('Fotografía actualizada correctamente.');}
+    setPhotoBusy(false);
+  }
+  async function removePhoto(){
+    if(!supabase||!photoUrl)return;
+    setPhotoBusy(true);setMessage('');
+    const {error}=await supabase.from('player_details').update({photo_url:null}).eq('user_id',user.id);
+    if(error){setMessage('No se pudo quitar la foto: '+error.message);setPhotoBusy(false);return;}
+    await supabase.storage.from('racketon-player-photos').remove([`${user.id}/avatar.jpg`,`${user.id}/avatar.png`,`${user.id}/avatar.webp`]);
+    setPhotoUrl('');setMessage('Fotografía eliminada del perfil.');setPhotoBusy(false);
+  }
   function change<K extends Exclude<keyof PlayerDetails,'sports'>>(key:K,value:PlayerDetails[K]){setDetails(old=>({...old,[key]:value}));setMessage('')}
   function changeSport(name:SportName,update:Partial<SportChoice>){setDetails(old=>({...old,sports:{...old.sports,[name]:{...old.sports[name],...update}}}));setMessage('')}
   async function save(e:React.FormEvent){
@@ -102,6 +131,12 @@ function PlayerProfile({user}:{user:User}) {
   return <div style={{maxWidth:850,margin:'24px auto 48px'}}>
     <div className="profile-box"><ShieldCheck color="#C8102E"/><div><strong>Cuenta de jugador</strong><p>{user.email}</p></div></div>
     {loading?<p style={{padding:24}}>Cargando perfil...</p>:<form onSubmit={save} style={{background:'#fff',border:'1px solid #e6e6e9',borderRadius:16,padding:'clamp(18px,4vw,32px)',marginTop:20,display:'grid',gap:22}}>
+      <div style={{display:'flex',alignItems:'center',gap:20,flexWrap:'wrap',padding:18,background:'#f8fafc',borderRadius:14}}>
+        {photoUrl?<img src={photoUrl} alt="Mi fotografía de jugador" style={{width:108,height:108,borderRadius:'50%',objectFit:'cover',border:'3px solid #c8102e'}}/>:<div aria-label="Sin fotografía" style={{width:108,height:108,borderRadius:'50%',display:'grid',placeItems:'center',background:'#e2e8f0',color:'#64748b'}}><UserRound size={52}/></div>}
+        <div style={{display:'grid',gap:9,flex:1,minWidth:220}}><strong>Fotografía de jugador</strong><span style={{fontSize:13,color:'#64748b'}}>JPG, PNG o WebP · Máximo 2 MB. La foto será pública y visible en las fichas. Por ahora solo para adultos con perfil visible.</span>
+          <div style={{display:'flex',gap:10,flexWrap:'wrap'}}><label style={{background:'#c8102e',color:'#fff',padding:'10px 14px',borderRadius:9,cursor:photoBusy?'wait':'pointer',fontWeight:700}}>{photoBusy?'Procesando…':photoUrl?'Cambiar foto':'Subir foto'}<input type="file" accept="image/jpeg,image/png,image/webp" disabled={photoBusy} style={{display:'none'}} onChange={e=>{const f=e.target.files?.[0];if(f)void uploadPhoto(f);e.target.value='';}}/></label>{photoUrl&&<button type="button" disabled={photoBusy} onClick={()=>void removePhoto()} style={{padding:'10px 14px',borderRadius:9,border:'1px solid #cbd5e1',background:'#fff',cursor:'pointer'}}>Eliminar foto</button>}</div>
+        </div>
+      </div>
       <div><h2 style={{margin:'0 0 8px'}}>Datos del jugador</h2><p style={{margin:0,color:'#666'}}>Puedes modificar esta información cuando quieras.</p></div>
       <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(220px,1fr))',gap:16}}>
         <label style={labelStyle}>Nombre público<input style={fieldStyle} maxLength={80} value={details.display_name} onChange={e=>change('display_name',e.target.value)} placeholder="Tu nombre deportivo"/></label>
@@ -126,6 +161,7 @@ function PlayerHome102({user,onNavigate}:{user:User;onNavigate:(tab:Tab)=>void})
  const [sport,setSport]=useState<PlayerHomeSport>('Tenis');
  const [rating,setRating]=useState<{rating:number;status:string;matches_played:number}|null>(null);
  const [name,setName]=useState('');
+ const [homePhoto,setHomePhoto]=useState('');
  const [enabled,setEnabled]=useState<Record<string,boolean>>({});
  const [pending,setPending]=useState<number|null>(null);
  const [recent,setRecent]=useState<{opponent_name:string;won:boolean;rating_delta:number;played_at:string}[]>([]);
@@ -138,7 +174,7 @@ function PlayerHome102({user,onNavigate}:{user:User;onNavigate:(tab:Tab)=>void})
    setLoading(true);setError('');
    const client=supabase;
    const [profileResult,ratingResult,incomingResult,historyResult]=await Promise.all([
-    client.from('player_details').select('display_name,sports').eq('user_id',user.id).maybeSingle(),
+    client.from('player_details').select('display_name,sports,photo_url').eq('user_id',user.id).maybeSingle(),
     client.from('tennis_ratings').select('rating,status,matches_played').eq('user_id',user.id).maybeSingle(),
     client.from('tennis_challenges').select('id',{count:'exact',head:true}).eq('challenged_id',user.id).eq('status','pending'),
     client.rpc('my_tennis_rating_history_072')
@@ -152,6 +188,7 @@ function PlayerHome102({user,onNavigate}:{user:User;onNavigate:(tab:Tab)=>void})
    if(ratingResult.error)setError('No se pudo cargar el rating de tenis.');
    setRating(ratingResult.data?{rating:Number(ratingResult.data.rating),status:String(ratingResult.data.status),matches_played:Number(ratingResult.data.matches_played)}:null);
    if(incomingResult.error)setError('No se pudieron consultar todos los desafíos.');
+   setHomePhoto(typeof profileResult.data?.photo_url==='string'?profileResult.data.photo_url:'');
    setPending(incomingResult.error?null:incomingResult.count??0);
    if(historyResult.error)setError('Algunos datos del historial no están disponibles.');
    setRecent(Array.isArray(historyResult.data)?historyResult.data.slice(0,3).map((x:{opponent_name:string;won:boolean;rating_delta:number;played_at:string})=>({opponent_name:x.opponent_name,won:x.won,rating_delta:Number(x.rating_delta),played_at:x.played_at})):[]);
@@ -164,7 +201,7 @@ function PlayerHome102({user,onNavigate}:{user:User;onNavigate:(tab:Tab)=>void})
  const action:React.CSSProperties={padding:'12px 16px',background:'#c8102e',border:0,borderRadius:10,color:'#fff',fontWeight:700,cursor:'pointer'};
  return <section className="content interior" style={{maxWidth:1160,margin:'24px auto 60px'}}>
   <span className="eyebrow red">RACKETON · ESPACIO JUGADOR</span>
-  <h1 style={{fontSize:'clamp(29px,4vw,44px)',margin:'10px 0'}}>Hola{name?', '+name:''} 👋</h1>
+  <div style={{display:'flex',alignItems:'center',gap:15,margin:'10px 0'}}>{homePhoto?<img src={homePhoto} alt="Mi foto" style={{width:64,height:64,borderRadius:'50%',objectFit:'cover'}}/>:<div style={{width:64,height:64,borderRadius:'50%',background:'#e2e8f0',display:'grid',placeItems:'center'}}><UserRound size={34}/></div>}<h1 style={{fontSize:'clamp(29px,4vw,44px)',margin:0}}>Hola{name?', '+name:''} 👋</h1></div>
   <p style={{color:'#64748b',margin:'0 0 24px'}}>Tu actividad deportiva, tus rivales y tu evolución en un mismo lugar.</p>
   <div style={{display:'flex',gap:9,flexWrap:'wrap',marginBottom:22}}>{launchSports.map(x=><button key={x} type="button" onClick={()=>setSport(x)} aria-pressed={sport===x} style={{padding:'11px 20px',borderRadius:99,border:sport===x?'2px solid #c8102e':'1px solid #d7dce4',background:sport===x?'#fff1f3':'#fff',color:'#172033',fontWeight:700,cursor:'pointer'}}>{x}</button>)}</div>
   {error&&<p role="status" style={{background:'#fff1f2',color:'#9f1239',padding:12,borderRadius:9}}>{error}</p>}
