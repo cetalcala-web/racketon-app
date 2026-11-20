@@ -1,6 +1,6 @@
 import {useCallback,useEffect,useMemo,useState} from 'react';
 import {supabase} from './supabase';
-import {Search,Plus,Users,UserRound,ChevronDown,Save,ArrowLeft,ShieldCheck} from 'lucide-react';
+import {Search,Plus,Save,ArrowLeft,ShieldCheck} from 'lucide-react';
 type Student={id:string;club_id:string;full_name:string;birth_year:number|null;sport:string;level:string;availability:string;active:boolean;[key:string]:unknown};
 type Enrollment={id:string;student_id:string;group_id:string;status:string};
 type Group={id:string;name:string;capacity:number;program_id:string};
