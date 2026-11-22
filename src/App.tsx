@@ -174,7 +174,7 @@ function PlayerHome102({user,onNavigate}:{user:User;onNavigate:(tab:Tab)=>void})
  const [homePhoto,setHomePhoto]=useState('');
  const [enabled,setEnabled]=useState<Record<string,boolean>>({});
  const [pending,setPending]=useState<number|null>(null);
- const [recent,setRecent]=useState<{opponent_name:string;won:boolean;rating_delta:number;played_at:string}[]>([]);
+ const [recent,setRecent]=useState<{opponent_name:string;won:boolean;rating_delta:number;played_at:string;score:string;venue:string}[]>([]);
  const [loading,setLoading]=useState(true);
  const [error,setError]=useState('');
  useEffect(()=>{
@@ -204,7 +204,7 @@ function PlayerHome102({user,onNavigate}:{user:User;onNavigate:(tab:Tab)=>void})
    setHomePhoto(typeof profileResult.data?.photo_url==='string'?profileResult.data.photo_url:'');
    setPending(incomingResult.error?null:incomingResult.count??0);
    if(historyResult.error)setError('Algunos datos del historial no están disponibles.');
-   setRecent(Array.isArray(historyResult.data)?historyResult.data.slice(0,3).map((x:{opponent_name:string;won:boolean;rating_delta:number;played_at:string})=>({opponent_name:x.opponent_name,won:x.won,rating_delta:Number(x.rating_delta),played_at:x.played_at})):[]);
+   setRecent(Array.isArray(historyResult.data)?historyResult.data.slice(0,3).map((x:Record<string,unknown>)=>{const firstText=(...values:unknown[])=>values.find(v=>typeof v==='string'&&v.trim().length>0) as string|undefined;return {opponent_name:String(x.opponent_name??''),won:x.won===true,rating_delta:Number(x.rating_delta??0),played_at:String(x.played_at??''),score:firstText(x.score,x.match_score,x.final_score,x.result_score,x.sets_score)??'',venue:firstText(x.venue_name,x.club_name,x.facility_name,x.location_name,x.venue,x.club)??''}}):[]);
    setLoading(false);
   }
   void load();return()=>{active=false};
@@ -234,9 +234,17 @@ function PlayerHome102({user,onNavigate}:{user:User;onNavigate:(tab:Tab)=>void})
      <div><div style={{display:'flex',alignItems:'center',gap:10,marginBottom:5}}><span style={{display:'grid',placeItems:'center',width:38,height:38,borderRadius:12,background:'#fff1f2',color:'#be123c'}}><History size={21}/></span><h2 style={{margin:0,fontSize:23,letterSpacing:'-.5px'}}>Últimos partidos disputados</h2></div><p style={{margin:'0 0 0 48px',color:'#64748b',fontSize:13}}>Tus resultados confirmados más recientes · Tenis</p></div>
      <span style={{border:'1px solid #e2e8f0',borderRadius:99,padding:'7px 12px',fontSize:12,fontWeight:750,color:'#475569',background:'#f8fafc'}}>{recent.length} {recent.length===1?'partido reciente':'partidos recientes'}</span>
     </div>
-    {recent.length?<div style={{display:'grid',gap:12}}>{recent.map((x,i)=><div key={i} style={{display:'grid',gridTemplateColumns:'minmax(0,1fr) auto',gap:15,alignItems:'center',padding:'17px 19px',border:'1px solid #e7eaf0',borderLeft:x.won?'4px solid #16a34a':'4px solid #dc2626',borderRadius:14,background:'linear-gradient(105deg,#f8fafc 0%,#fff 80%)'}}>
-     <div style={{minWidth:0,display:'flex',alignItems:'center',gap:14}}><span style={{width:43,height:43,flexShrink:0,display:'grid',placeItems:'center',borderRadius:12,background:x.won?'#dcfce7':'#fee2e2',color:x.won?'#15803d':'#b91c1c'}}><Trophy size={21}/></span><div style={{minWidth:0}}><div style={{display:'flex',alignItems:'center',gap:8,flexWrap:'wrap'}}><strong style={{fontSize:15,color:'#0f172a'}}>{x.opponent_name||'Rival no disponible'}</strong><span style={{fontSize:11,fontWeight:800,letterSpacing:'.3px',borderRadius:6,padding:'4px 7px',background:x.won?'#dcfce7':'#fee2e2',color:x.won?'#166534':'#991b1b'}}>{x.won?'VICTORIA':'DERROTA'}</span></div><div style={{display:'flex',alignItems:'center',gap:5,marginTop:6,color:'#64748b',fontSize:12}}><CalendarDays size={13}/>{x.played_at?new Date(x.played_at).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'}):'Fecha no disponible'}<span style={{padding:'0 4px'}}>·</span> Tenis</div></div></div>
-     <div style={{textAlign:'right',whiteSpace:'nowrap'}}><div style={{fontSize:11,color:'#64748b',fontWeight:700,marginBottom:5}}>CAMBIO DE RATING</div><div style={{fontSize:21,fontWeight:850,color:x.rating_delta>0?'#15803d':x.rating_delta<0?'#dc2626':'#475569',fontVariantNumeric:'tabular-nums'}}>{x.rating_delta>0?'+':''}{x.rating_delta.toFixed(2)}</div></div>
+    {recent.length?<div style={{display:'grid',gap:12}}>{recent.map((x,i)=><div key={i} style={{padding:'18px 20px',border:'1px solid #e7eaf0',borderLeft:x.won?'4px solid #16a34a':'4px solid #dc2626',borderRadius:14,background:'linear-gradient(105deg,#f8fafc 0%,#fff 80%)'}}>
+     <div style={{display:'flex',alignItems:'center',justifyContent:'space-between',gap:14,flexWrap:'wrap'}}>
+      <div style={{display:'flex',alignItems:'center',gap:12,minWidth:0}}><span style={{width:42,height:42,flexShrink:0,display:'grid',placeItems:'center',borderRadius:12,background:x.won?'#dcfce7':'#fee2e2',color:x.won?'#15803d':'#b91c1c'}}><Trophy size={20}/></span><div><div style={{fontSize:11,color:'#64748b',fontWeight:750,marginBottom:4}}>RIVAL</div><strong style={{fontSize:17,color:'#0f172a'}}>{x.opponent_name||'Rival no disponible'}</strong></div></div>
+      <span style={{fontSize:12,fontWeight:850,borderRadius:8,padding:'8px 12px',background:x.won?'#dcfce7':'#fee2e2',color:x.won?'#166534':'#991b1b'}}>{x.won?'VICTORIA':'DERROTA'}</span>
+     </div>
+     <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(145px,1fr))',gap:14,marginTop:17,paddingTop:15,borderTop:'1px solid #e7eaf0'}}>
+      <div><div style={{fontSize:11,color:'#64748b',fontWeight:750,marginBottom:6}}>FECHA</div><div style={{display:'flex',alignItems:'center',gap:6,fontSize:13,fontWeight:650,color:'#334155'}}><CalendarDays size={15}/>{x.played_at?new Date(x.played_at).toLocaleDateString('es-ES',{day:'2-digit',month:'short',year:'numeric'}):'No registrada'}</div></div>
+      <div><div style={{fontSize:11,color:'#64748b',fontWeight:750,marginBottom:6}}>RESULTADO · MARCADOR</div><div style={{fontSize:15,fontWeight:800,color:'#0f172a'}}>{x.score||'Marcador no registrado'}</div></div>
+      <div><div style={{fontSize:11,color:'#64748b',fontWeight:750,marginBottom:6}}>CLUB / INSTALACIÓN</div><div style={{fontSize:13,fontWeight:650,color:'#334155'}}>{x.venue||'No registrado'}</div></div>
+      <div><div style={{fontSize:11,color:'#64748b',fontWeight:750,marginBottom:6}}>CAMBIO DE RATING</div><div style={{fontSize:20,fontWeight:850,color:x.rating_delta>0?'#15803d':x.rating_delta<0?'#dc2626':'#475569',fontVariantNumeric:'tabular-nums'}}>{x.rating_delta>0?'+':''}{x.rating_delta.toFixed(2)}</div></div>
+     </div>
     </div>)}</div>:<div style={{textAlign:'center',padding:'32px 20px',border:'1px dashed #cbd5e1',borderRadius:14,background:'#f8fafc'}}><Trophy size={28} color="#94a3b8"/><p style={{margin:'10px 0 3px',fontWeight:750,color:'#334155'}}>Todavía no hay partidos confirmados</p><p style={{margin:0,fontSize:13,color:'#64748b'}}>Tus próximos resultados aparecerán aquí automáticamente.</p></div>}
     <div style={{display:'flex',justifyContent:'flex-end',marginTop:17}}><button type="button" onClick={()=>onNavigate('Rankings')} className="rkt-inline-action" style={{display:'inline-flex',alignItems:'center',gap:7,fontWeight:750}}><ChartNoAxesColumnIncreasing size={17}/> Consultar clasificaciones</button></div>
    </div>
