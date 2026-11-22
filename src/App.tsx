@@ -1,7 +1,7 @@
 import SchoolManager090 from './SchoolManager091';
 import {PlayerEnrollments084} from './RankingEnrollments084';
 import { useEffect, useState } from 'react';
-import { Home, Trophy, CalendarDays, Users, UserRound, LogIn, LogOut, Menu, X, ChartNoAxesColumnIncreasing, ShieldCheck, ArrowRight, MapPin } from 'lucide-react';
+import { Home, Trophy, CalendarDays, Users, UserRound, LogIn, LogOut, Menu, X, ChartNoAxesColumnIncreasing, ShieldCheck, ArrowRight, MapPin, Wallet, Bell } from 'lucide-react';
 import type { LucideIcon } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import { configured, supabase } from './supabase';
@@ -250,7 +250,7 @@ function PlayerNavigation110({user,opponent,onClearOpponent,onChallenge}:{user:U
  const [area,setArea]=useState<PlayerArea>('Inicio');
  const [sub,setSub]=useState('Mi panel');
  const go=(next:PlayerArea,child?:string)=>{setArea(next);setSub(child||playerArchitecture.find(x=>x.name===next)!.children[0]);window.scrollTo?.({top:0,behavior:'smooth'});};
- const buttonStyle=(selected:boolean):React.CSSProperties=>({border:selected?'1px solid #b91c1c':'1px solid #e2e8f0',background:selected?'#fff1f2':'#fff',color:selected?'#991b1b':'#334155',borderRadius:10,padding:'11px 15px',fontWeight:700,cursor:'pointer',fontSize:14});
+
  const planned:Record<string,string>={
  'Mi agenda':'Calendario unificado de partidos, competiciones, reservas y actividades. Vistas calendario/lista y filtros.',
  'Avisos':'Notificaciones, invitaciones y resultados pendientes de confirmar, separados de los avisos informativos.',
@@ -263,10 +263,25 @@ function PlayerNavigation110({user,opponent,onClearOpponent,onChallenge}:{user:U
  'Privacidad':'Configuración específica de visibilidad y permisos. La visibilidad existente puede editarse por ahora en Datos personales.',
  'Configuración':'Preferencias de cuenta, seguridad y notificaciones.'
  };
- return <section className="content interior" style={{maxWidth:1180,margin:'22px auto 65px'}}>
-  <div style={{display:'flex',gap:8,flexWrap:'wrap',marginBottom:14}}>{playerArchitecture.map(x=><button key={x.name} type="button" style={buttonStyle(area===x.name)} onClick={()=>go(x.name)}>{x.name}</button>)}</div>
-  <div style={{display:'flex',gap:8,flexWrap:'wrap',padding:'12px 0',borderBottom:'1px solid #e2e8f0',marginBottom:18}}>{playerArchitecture.find(x=>x.name===area)!.children.map(child=><button key={child} type="button" style={{...buttonStyle(sub===child),padding:'9px 12px',fontSize:13}} onClick={()=>setSub(child)}>{child}</button>)}</div>
-  <span className="eyebrow red">RACKETON / {area.toUpperCase()} / {sub.toUpperCase()}</span>
+ return <section className="rkt-player-shell">
+  <style>{`
+  .rkt-player-shell{--rk-red:#cc1237;--rk-ink:#172033;--rk-muted:#667085;display:grid;grid-template-columns:256px minmax(0,1fr);min-height:calc(100vh - 160px);width:100%;max-width:1600px;margin:0 auto;background:#f5f6f9;color:var(--rk-ink);font-family:inherit}
+  .rkt-sidebar{background:#fff;border-right:1px solid #e9ebf0;padding:28px 15px 30px;display:flex;flex-direction:column;gap:7px}
+  .rkt-sidebar-title{font-size:10px;letter-spacing:2px;color:#9299a6;font-weight:900;padding:0 14px;margin:6px 0 13px}
+  .rkt-nav-btn{width:100%;border:0;border-radius:12px;padding:13px 14px;display:flex;align-items:center;gap:13px;background:transparent;color:#475467;text-align:left;font-size:14px;font-weight:750;cursor:pointer;transition:background .15s}
+  .rkt-nav-btn:hover{background:#f5f6f9}.rkt-nav-btn.active{background:#fff0f3;color:#b90d31}.rkt-nav-btn.active:before{content:'';width:3px;height:20px;border-radius:6px;background:#c8102e;margin-left:-9px;margin-right:6px}
+  .rkt-nav-sub{margin:2px 0 12px 39px;border-left:1px solid #e8eaf0;display:flex;flex-direction:column;gap:2px}
+  .rkt-nav-sub button{border:0;background:transparent;text-align:left;padding:10px 12px;color:#667085;font-size:12px;font-weight:650;cursor:pointer;border-radius:0 9px 9px 0}.rkt-nav-sub button:hover{background:#f5f6f9}.rkt-nav-sub button.active{color:#bd1235;background:#fff1f4;border-left:3px solid #c8102e;margin-left:-2px;font-weight:850}
+  .rkt-workspace{min-width:0;padding:29px clamp(18px,3vw,52px) 70px}.rkt-topline{display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-bottom:28px}.rkt-breadcrumb{font-size:12px;font-weight:800;letter-spacing:.3px;color:#88909e}.rkt-breadcrumb strong{color:#c8102e}.rkt-header-actions{display:flex;align-items:center;gap:9px}.rkt-header-chip{border:1px solid #e7e9ef;background:white;border-radius:11px;padding:10px 13px;display:flex;align-items:center;gap:7px;color:#344054;font-size:12px;font-weight:800}.rkt-header-chip svg{color:#c8102e}.rkt-section-heading{margin:0 0 24px}.rkt-section-heading h1{font-size:clamp(25px,2.6vw,34px);letter-spacing:-1px;margin:0 0 5px;color:#182230}.rkt-section-heading p{color:#667085;margin:0;font-size:14px}.rkt-mobile-trigger{display:none}
+  .rkt-workspace .content.interior{max-width:100%!important;margin:0!important;padding:0!important}.rkt-workspace .content{max-width:100%!important}.rkt-workspace .eyebrow.red{display:none}.rkt-workspace section{max-width:100%}.rkt-workspace .page-title{margin-top:0}.rkt-workspace>div>section{max-width:100%}
+  @media(max-width:900px){.rkt-player-shell{grid-template-columns:1fr}.rkt-sidebar{display:none}.rkt-workspace{padding:20px 16px 105px}.rkt-mobile-trigger{display:flex;border:1px solid #e5e7eb;border-radius:10px;background:white;padding:10px 12px;align-items:center;gap:8px;font-weight:800}.rkt-mobile-sub{display:flex;gap:7px;overflow-x:auto;padding:0 0 14px;margin-bottom:15px}.rkt-mobile-sub button{white-space:nowrap;border:1px solid #e6e8ed;border-radius:100px;padding:9px 12px;background:#fff;font-size:12px;font-weight:750;color:#667085}.rkt-mobile-sub button.active{border-color:#c8102e;background:#fff0f3;color:#b80f31}.rkt-bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:80;display:grid;grid-template-columns:repeat(5,1fr);background:white;border-top:1px solid #e6e8ed;box-shadow:0 -8px 30px #1118270d;padding:8px 2px max(8px,env(safe-area-inset-bottom))}.rkt-bottom-nav button{border:0;background:none;display:flex;align-items:center;flex-direction:column;gap:4px;color:#667085;font-size:10px;font-weight:750;padding:5px 0}.rkt-bottom-nav button.active{color:#c8102e}.rkt-header-actions{margin-left:auto}.rkt-section-heading{margin-bottom:16px}}
+  @media(min-width:901px){.rkt-bottom-nav,.rkt-mobile-sub{display:none}}
+  `}</style>
+  <aside className="rkt-sidebar" aria-label="Navegación del jugador"><div className="rkt-sidebar-title">ESPACIO JUGADOR</div>{playerArchitecture.map((x,i)=>{const NavIcon=[Home,Trophy,ChartNoAxesColumnIncreasing,CalendarDays,UserRound][i];return <div key={x.name}><button type="button" className={'rkt-nav-btn '+(area===x.name?'active':'')} onClick={()=>go(x.name)}><NavIcon size={19}/><span>{x.name}</span></button>{area===x.name&&<div className="rkt-nav-sub">{x.children.map(child=><button key={child} type="button" className={sub===child?'active':''} onClick={()=>setSub(child)}>{child}</button>)}</div>}</div>})}</aside>
+  <div className="rkt-workspace"><div className="rkt-topline"><div className="rkt-breadcrumb">RACKETON / {area.toUpperCase()} / <strong>{sub.toUpperCase()}</strong></div><div className="rkt-header-actions"><div className="rkt-header-chip" title="Monedero pendiente de integración" ><Wallet size={15}/> Monedero · Próximamente</div><button type="button" className="rkt-header-chip" onClick={()=>go('Inicio','Avisos')} aria-label="Avisos"><Bell size={15}/> Avisos</button></div></div>
+  <div className="rkt-section-heading"><h1>{sub==='Mi panel'?'Mi RACKETON':sub}</h1><p>{sub==='Mi panel'?'Tu actividad deportiva, tus rivales y tu evolución en un solo lugar.':area+' · '+sub}</p></div>
+  <div className="rkt-mobile-sub">{playerArchitecture.find(x=>x.name===area)!.children.map(child=><button key={child} className={sub===child?'active':''} onClick={()=>setSub(child)}>{child}</button>)}</div>
+  <div className="rkt-screen-body">
   {area==='Inicio'&&sub==='Mi panel'?<PlayerHome102 user={user} onNavigate={(old:Tab)=>{if(old==='Desafíos'||old==='Jugadores')go('Competir','Desafíos');else if(old==='Rankings'||old==='Mis ligas')go('Clasificaciones',old==='Mis ligas'?'Mis ligas':'Clasificaciones RACKETON');else if(old==='Perfil')go('Mi perfil','Datos personales');else if(old==='Reservas')go('Reservas');else if(old==='Torneos')go('Competir','Explorar competiciones');}}/>:
   area==='Competir'&&sub==='Desafíos'?<><div style={navCard}><h2>Buscar rivales y organizar partidos libres</h2><p>Los desafíos son partidos individuales o de dobles fuera de las competiciones organizadas.</p><PlayerSearch userId={user.id} onChallenge={p=>{onChallenge(p);go('Competir','Desafíos')}}/></div><div style={navCard}><h2>Desafíos individuales</h2><TennisChallenges userId={user.id} opponent={opponent} onClose={onClearOpponent}/></div><div style={navCard}><h2>Resultados y confirmaciones</h2><TennisResults userId={user.id}/></div><div style={navCard}><h2>Desafíos de dobles</h2><RacketonDoubles107 userId={user.id}/></div></>:
   area==='Clasificaciones'&&sub==='Clasificaciones RACKETON'?<RacketonNationalRanking108 userId={user.id} onChallenge={(p:{id:string;name:string})=>{onChallenge(p);go('Competir','Desafíos')}}/>:
@@ -276,6 +291,8 @@ function PlayerNavigation110({user,opponent,onClearOpponent,onChallenge}:{user:U
   area==='Mi perfil'&&sub==='Datos personales'?<PlayerProfile user={user}/>:
   area==='Mi perfil'&&sub==='Perfil deportivo'?<><div style={navCard}><h2>Mis niveles y evaluaciones</h2><p>Los cuestionarios de nivelación son independientes para cada deporte y solo se completan una vez.</p><PlayerProfile user={user}/></div><div style={navCard}><TennisCompetitiveProfile userId={user.id}/></div></>:
   <PendingPlayerModule title={sub} description={planned[sub]||'Este módulo se implementará de forma independiente, manteniendo la navegación aprobada.'}/>}
+  </div></div>
+  <nav className="rkt-bottom-nav" aria-label="Menú principal del jugador">{playerArchitecture.map((x,i)=>{const NavIcon=[Home,Trophy,ChartNoAxesColumnIncreasing,CalendarDays,UserRound][i];return <button key={x.name} type="button" className={area===x.name?'active':''} onClick={()=>go(x.name)}><NavIcon size={20}/><span>{x.name}</span></button>})}</nav>
  </section>;
 }
 export default function App(){
