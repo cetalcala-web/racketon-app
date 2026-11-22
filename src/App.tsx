@@ -163,6 +163,18 @@ function PlayerProfile({user}:{user:User}) {
   </div>;
 }
 
+// El RPC my_tennis_rating_history_072 devuelve sets como [[juegos_retador,juegos_desafiado], ...].
+function formatTennisSets116(raw:unknown, challengerId:string|undefined, currentUserId:string):string {
+ let value:unknown=raw;
+ if(typeof value==='string'){try{value=JSON.parse(value)}catch{return ''}}
+ if(!Array.isArray(value))return '';
+ const myFirst=challengerId===currentUserId;
+ return value.map((set:unknown)=>{
+  if(!Array.isArray(set)||set.length<2)return '';
+  const a=Number(set[myFirst?0:1]);const b=Number(set[myFirst?1:0]);
+  return Number.isFinite(a)&&Number.isFinite(b)?`${a}-${b}`:'';
+ }).filter(Boolean).join(' / ');
+}
 type PlayerHomeSport = 'Tenis' | 'Pádel' | 'Pickleball';
 const launchSports:PlayerHomeSport[]=['Tenis','Pádel','Pickleball'];
 function PlayerHome102({user,onNavigate}:{user:User;onNavigate:(tab:Tab)=>void}){
@@ -204,7 +216,18 @@ function PlayerHome102({user,onNavigate}:{user:User;onNavigate:(tab:Tab)=>void})
    setHomePhoto(typeof profileResult.data?.photo_url==='string'?profileResult.data.photo_url:'');
    setPending(incomingResult.error?null:incomingResult.count??0);
    if(historyResult.error)setError('Algunos datos del historial no están disponibles.');
-   setRecent(Array.isArray(historyResult.data)?historyResult.data.slice(0,3).map((x:Record<string,unknown>)=>{const firstText=(...values:unknown[])=>values.find(v=>typeof v==='string'&&v.trim().length>0) as string|undefined;return {opponent_name:String(x.opponent_name??''),won:x.won===true,rating_delta:Number(x.rating_delta??0),played_at:String(x.played_at??''),score:firstText(x.score,x.match_score,x.final_score,x.result_score,x.sets_score)??'',venue:firstText(x.venue_name,x.club_name,x.facility_name,x.location_name,x.venue,x.club)??''}}):[]);
+   const recentRows=Array.isArray(historyResult.data)?historyResult.data.slice(0,3) as Record<string,unknown>[]:[];
+   // La consulta histórica ya trae el marcador real en `sets`. Consultamos el retador
+   // para mostrar los juegos desde la perspectiva del usuario conectado.
+   const ids=recentRows.map(x=>String(x.challenge_id??'')).filter(Boolean);
+   const challengeLookup=ids.length?await client.from('tennis_challenges').select('id,challenger_id').in('id',ids):null;
+   if(!active)return;
+   const challengerById=new Map<string,string>((challengeLookup?.data??[]).map((c:{id:string;challenger_id:string})=>[c.id,c.challenger_id]));
+   setRecent(recentRows.map(x=>{const firstText=(...values:unknown[])=>values.find(v=>typeof v==='string'&&v.trim().length>0) as string|undefined;
+    const challenger=challengerById.get(String(x.challenge_id??''));
+    const score=challenger?formatTennisSets116(x.sets,challenger,user.id):'';
+    return {opponent_name:String(x.opponent_name??''),won:x.won===true,rating_delta:Number(x.rating_delta??0),played_at:String(x.played_at??''),score:score||(!challenger&&Array.isArray(x.sets)?'Marcador disponible en resultados':firstText(x.score,x.match_score,x.final_score,x.result_score,x.sets_score)??''),venue:firstText(x.venue_name,x.club_name,x.facility_name,x.location_name,x.venue,x.club)??''};
+   }));
    setLoading(false);
   }
   void load();return()=>{active=false};
