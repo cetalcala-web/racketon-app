@@ -582,6 +582,62 @@ function PlayerNotices128({userId,onNavigate}:{userId:string;onNavigate:(area:Pl
  </div>
 }
 
+
+type RacketonCompetition130={
+ id:string;title:string;sport:string;format:string;city:string;region:string;
+ venue_name:string|null;starts_on:string;ends_on:string|null;
+ registration_opens_on:string|null;registration_closes_on:string|null;
+ capacity:number|null;level_min:string|null;level_max:string|null;
+ description:string|null;rules_url:string|null;status:string;
+};
+function CompetitionExplorer130(){
+ const [items,setItems]=useState<RacketonCompetition130[]>([]);
+ const [loading,setLoading]=useState(true);
+ const [error,setError]=useState('');
+ const [sport,setSport]=useState('Todos');
+ const [region,setRegion]=useState('');
+ const [query,setQuery]=useState('');
+ const [status,setStatus]=useState('Todas');
+ const [selected,setSelected]=useState<RacketonCompetition130|null>(null);
+ useEffect(()=>{
+  let active=true;
+  async function load(){
+   if(!supabase){setError('Supabase no está configurado.');setLoading(false);return;}
+   const {data,error:err}=await supabase.from('racketon_competitions')
+    .select('id,title,sport,format,city,region,venue_name,starts_on,ends_on,registration_opens_on,registration_closes_on,capacity,level_min,level_max,description,rules_url,status')
+    .eq('is_published',true).order('starts_on',{ascending:true}).limit(250);
+   if(!active)return;
+   setLoading(false);
+   if(err){setError('No se pudieron consultar las competiciones: '+err.message);return;}
+   setItems((data||[]) as RacketonCompetition130[]);
+  }
+  void load();return()=>{active=false};
+ },[]);
+ const today=new Date().toISOString().slice(0,10);
+ const phase=(x:RacketonCompetition130)=>{
+  if(x.status==='cancelled')return 'Cancelada';
+  if(x.ends_on&&x.ends_on<today)return 'Finalizada';
+  if(x.starts_on<=today)return 'En curso';
+  if(x.registration_closes_on&&x.registration_closes_on<today)return 'Inscripción cerrada';
+  if(x.registration_opens_on&&x.registration_opens_on>today)return 'Próximamente';
+  return 'Inscripción abierta';
+ };
+ const filtered=items.filter(x=>(sport==='Todos'||x.sport===sport)
+  &&(!region||[x.city,x.region,x.venue_name||''].join(' ').toLocaleLowerCase('es').includes(region.toLocaleLowerCase('es')))
+  &&(!query||[x.title,x.sport,x.format,x.description||''].join(' ').toLocaleLowerCase('es').includes(query.toLocaleLowerCase('es')))
+  &&(status==='Todas'||phase(x)===status));
+ const date=(x:string|null)=>x?new Date(x+'T12:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'}):'Por confirmar';
+ return <div className="rkt-comp130">
+  <style>{`.rkt-comp130{max-width:1120px;display:grid;gap:19px}.rkt-comp130 *{box-sizing:border-box}.rkt-comp130-hero{background:linear-gradient(115deg,#171b29,#4b1427 72%,#bd1539);color:white;padding:30px;border-radius:20px}.rkt-comp130-hero small{color:#ffb5c4;font-weight:900;letter-spacing:1.6px}.rkt-comp130-hero h2{font-size:clamp(24px,3vw,35px);margin:10px 0}.rkt-comp130-hero p{max-width:630px;color:#e8dce2;font-size:14px;line-height:1.6}.rkt-comp130-filter{background:#fff;border:1px solid #e8eaf0;padding:18px;border-radius:16px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px}.rkt-comp130-filter label{display:grid;gap:7px;font-size:11px;font-weight:850;color:#667085}.rkt-comp130-filter input,.rkt-comp130-filter select{width:100%;padding:12px;border-radius:9px;border:1px solid #dfe3e9;background:white;color:#1b2636;font-size:13px}.rkt-comp130-count{font-size:13px;color:#667085}.rkt-comp130-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}.rkt-comp130-card{background:white;border:1px solid #e7eaf0;border-radius:16px;padding:20px;display:grid;gap:12px}.rkt-comp130-card h3{margin:0;font-size:19px;color:#182032}.rkt-comp130-card p{margin:0;font-size:13px;color:#697487}.rkt-comp130-top{display:flex;align-items:center;justify-content:space-between;gap:9px}.rkt-comp130-tag{border-radius:100px;background:#fff0f3;color:#b81235;padding:7px 11px;font-size:11px;font-weight:850}.rkt-comp130-status{font-size:11px;font-weight:850;color:#667085}.rkt-comp130-details{display:grid;gap:9px;font-size:12px;color:#475467}.rkt-comp130-card button,.rkt-comp130-back{border:0;background:#c8102e;color:white;border-radius:10px;padding:12px 16px;cursor:pointer;font-weight:850;text-align:center}.rkt-comp130-empty{background:white;border:1px dashed #d7dce5;border-radius:16px;padding:40px 20px;text-align:center;color:#667085;line-height:1.6}.rkt-comp130-info{background:#fff7ed;border:1px solid #fed7aa;color:#92400e;padding:13px;border-radius:10px;font-size:12px}.rkt-comp130-detail{background:white;border:1px solid #e8eaf0;padding:24px;border-radius:18px;display:grid;gap:16px}.rkt-comp130-detail h2{margin:0}.rkt-comp130-detail p{line-height:1.7;color:#536075;white-space:pre-wrap}.rkt-comp130-detail dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.rkt-comp130-detail dl div{padding:12px;background:#f8fafc;border-radius:10px}.rkt-comp130-detail dt{font-size:11px;color:#667085}.rkt-comp130-detail dd{margin:5px 0 0;font-weight:800;font-size:13px}.rkt-comp130-detail a{color:#c8102e;font-weight:800;overflow-wrap:anywhere}@media(max-width:760px){.rkt-comp130-filter{grid-template-columns:repeat(2,minmax(0,1fr))}.rkt-comp130-grid{grid-template-columns:1fr}.rkt-comp130-detail dl{grid-template-columns:1fr}}@media(max-width:420px){.rkt-comp130-filter{grid-template-columns:1fr}}`}</style>
+  <header className="rkt-comp130-hero"><small>RACKETON · COMPETIR</small><h2>Explora competiciones</h2><p>Encuentra torneos y ligas publicados por los organizadores. Filtra por deporte, ubicación y periodo de inscripción.</p></header>
+  {selected?<div className="rkt-comp130-detail"><button className="rkt-comp130-back" type="button" onClick={()=>setSelected(null)}>← Volver a competiciones</button><span className="rkt-comp130-tag">{selected.sport} · {selected.format}</span><h2>{selected.title}</h2><p>{selected.description||'El organizador todavía no ha añadido una descripción.'}</p><dl><div><dt>Ubicación</dt><dd>{selected.venue_name||selected.city} · {selected.city}, {selected.region}</dd></div><div><dt>Fechas</dt><dd>{date(selected.starts_on)}{selected.ends_on?' – '+date(selected.ends_on):''}</dd></div><div><dt>Inscripciones</dt><dd>{phase(selected)} · cierre {date(selected.registration_closes_on)}</dd></div><div><dt>Nivel</dt><dd>{selected.level_min||'Sin especificar'}{selected.level_max?' – '+selected.level_max:''}</dd></div><div><dt>Plazas</dt><dd>{selected.capacity??'Por confirmar'}</dd></div><div><dt>Modalidad</dt><dd>{selected.format}</dd></div></dl>{selected.rules_url&&/^https:\/\//i.test(selected.rules_url)&&<a href={selected.rules_url} target="_blank" rel="noopener noreferrer">Consultar reglamento del organizador ↗</a>}<div className="rkt-comp130-info">Las inscripciones online aún no están habilitadas. Esta ficha es informativa y no reserva plaza.</div></div>:<>
+  <div className="rkt-comp130-filter"><label>Deporte<select value={sport} onChange={e=>setSport(e.target.value)}>{['Todos','Tenis','Pádel','Pickleball','Squash','Bádminton'].map(x=><option key={x}>{x}</option>)}</select></label><label>Ciudad o región<input value={region} onChange={e=>setRegion(e.target.value)} placeholder="Madrid, Alcalá..."/></label><label>Buscar competición<input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Nombre o modalidad"/></label><label>Estado<select value={status} onChange={e=>setStatus(e.target.value)}>{['Todas','Inscripción abierta','Próximamente','Inscripción cerrada','En curso','Finalizada','Cancelada'].map(x=><option key={x}>{x}</option>)}</select></label></div>
+  <div className="rkt-comp130-count">{loading?'Consultando competiciones…':`${filtered.length} competiciones encontradas`}</div>
+  {error?<div className="rkt-comp130-info">{error}. Comprueba que has ejecutado el SQL 0041.</div>:!loading&&filtered.length===0?<div className="rkt-comp130-empty"><strong>No hay competiciones publicadas con estos filtros.</strong><div>Cuando los clubes publiquen torneos, aparecerán aquí. No mostramos competiciones ficticias.</div></div>:<div className="rkt-comp130-grid">{filtered.map(x=><article className="rkt-comp130-card" key={x.id}><div className="rkt-comp130-top"><span className="rkt-comp130-tag">{x.sport} · {x.format}</span><span className="rkt-comp130-status">{phase(x)}</span></div><h3>{x.title}</h3><p>{x.city} · {x.region}</p><div className="rkt-comp130-details"><span>📅 {date(x.starts_on)}{x.ends_on?' – '+date(x.ends_on):''}</span><span>📍 {x.venue_name||'Sede por confirmar'}</span><span>🎯 {x.level_min||'Nivel abierto'}{x.level_max?' – '+x.level_max:''}</span></div><button type="button" onClick={()=>setSelected(x)}>Ver competición</button></article>)}</div>}
+  </>}
+ </div>;
+}
+
 function PendingPlayerModule({title,description}:{title:string;description:string}){
  return <div style={navCard}><h2 style={{marginTop:0}}>{title}</h2><p style={{color:'#64748b'}}>{description}</p><span style={{fontSize:12,color:'#9a3412',fontWeight:700}}>PENDIENTE DE DESARROLLO · No disponible todavía</span></div>;
 }
@@ -639,6 +695,7 @@ function PlayerNavigation112({user,opponent,onClearOpponent,onChallenge}:{user:U
   <div className="rkt-mobile-sub">{playerArchitecture.find(x=>x.name===area)!.children.map(child=><button key={child} className={sub===child?'active':''} onClick={()=>setSub(child)}>{child}</button>)}</div>
   <div className="rkt-screen-body">
   {area==='Inicio'&&sub==='Mi panel'?<PlayerHome102 user={user} onNavigate={(old:Tab)=>{if(old==='Desafíos'||old==='Jugadores')go('Competir','Desafíos');else if(old==='Rankings'||old==='Mis ligas')go('Clasificaciones',old==='Mis ligas'?'Mis ligas':'Clasificaciones RACKETON');else if(old==='Perfil'){setDataTab('Datos personales');go('Inicio','Mis datos')}else if(old==='Reservas')go('Reservas');else if(old==='Torneos')go('Competir','Explorar competiciones');}}/>:
+  area==='Competir'&&sub==='Explorar competiciones'?<CompetitionExplorer130/>:
   area==='Competir'&&sub==='Desafíos'?<><div style={navCard}><h2>Buscar rivales y organizar partidos libres</h2><p>Los desafíos son partidos individuales o de dobles fuera de las competiciones organizadas.</p><PlayerSearch userId={user.id} onChallenge={p=>{onChallenge(p);go('Competir','Desafíos')}}/></div><div style={navCard}><h2>Desafíos individuales</h2><TennisChallenges userId={user.id} opponent={opponent} onClose={onClearOpponent}/></div><div style={navCard}><h2>Resultados y confirmaciones</h2><TennisResults userId={user.id}/></div><div style={navCard}><h2>Desafíos de dobles</h2><RacketonDoubles107 userId={user.id}/></div></>:
   area==='Clasificaciones'&&sub==='Clasificaciones RACKETON'?<RacketonNationalRanking108 userId={user.id} onChallenge={(p:{id:string;name:string})=>{onChallenge(p);go('Competir','Desafíos')}}/>:
   area==='Clasificaciones'&&sub==='Mis ligas'?<><PlayerLeagues userId={user.id}/><div style={navCard}><h2>Rankings y ligas de club</h2><PlayerEnrollments084 userId={user.id}/></div></>:
