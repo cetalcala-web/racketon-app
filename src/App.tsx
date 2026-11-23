@@ -703,6 +703,7 @@ function CompetitionEventsManager133({competitionId}:{competitionId:string}){
  const [loading,setLoading]=useState(true);
  const [saving,setSaving]=useState<string|null>(null);
  const [showInactive,setShowInactive]=useState(false);
+ const [showEntries,setShowEntries]=useState<Record<string,boolean>>({});
  const load=async()=>{
   if(!supabase)return;
   const {data,error:e}=await supabase.from('racketon_competition_events').select('id,competition_id,category,discipline,capacity,status,starts_on,registration_closes_on,notes,is_active').eq('competition_id',competitionId).order('category').order('discipline');
@@ -735,6 +736,8 @@ function CompetitionEventsManager133({competitionId}:{competitionId:string}){
  <label style={{fontSize:12}}>Fecha de prueba<input style={{display:'block',width:'100%',padding:8}} type="date" value={x.starts_on||''} onChange={e=>patch(x.id,{starts_on:e.target.value||null})}/></label>
  <label style={{fontSize:12}}>Cierre inscripción<input style={{display:'block',width:'100%',padding:8}} type="date" value={x.registration_closes_on||''} onChange={e=>patch(x.id,{registration_closes_on:e.target.value||null})}/></label>
  </div><label style={{fontSize:12}}>Observaciones<input style={{display:'block',width:'100%',padding:8}} value={x.notes||''} onChange={e=>patch(x.id,{notes:e.target.value})}/></label>
+ <div><button type="button" onClick={()=>setShowEntries(v=>({...v,[x.id]:!v[x.id]}))}>{showEntries[x.id]?'Ocultar inscritos':'Ver inscritos'}</button></div>
+ {showEntries[x.id]&&<ClubEntries136 eventId={x.id}/>}
  <div><button type="button" onClick={()=>void save(x)} disabled={saving===x.id}>{saving===x.id?'Guardando…':'Guardar esta prueba'}</button> <button type="button" disabled={saving===x.id} onClick={()=>void setActive(x,!x.is_active)}>{x.is_active?'Retirar prueba':'Reactivar prueba'}</button></div>
  </div>)}
  </div>;
@@ -839,8 +842,96 @@ function ClubCompetitionManager131({userId}:{userId:string}){
   <label className="rkt-club131-wide">Enlace HTTPS al reglamento<input type="url" value={form.rules_url} onChange={e=>set('rules_url',e.target.value)} placeholder="https://..."/></label>
   </div><div className="rkt-club131-actions"><button className="rkt-club131-primary" type="submit" disabled={saving}>{saving?'Guardando…':editing?'Guardar cambios':'Guardar borrador'}</button>{editing&&<button type="button" onClick={()=>{setEditing(null);setForm(emptyCompetition131);setPosterFile(null)}}>Cancelar edición</button>}</div></form></div>
   {notice&&<div role="status" className={'rkt-club131-alert'+(isError?' error':'')}>{notice}</div>}
-  <div className="rkt-club131-panel"><h3>Mis competiciones</h3><div className="rkt-club131-note">Solo puedes editar las competiciones creadas con tu cuenta autorizada de club. Publicar las hará visibles para todos los jugadores. Las inscripciones online llegarán en la siguiente fase.</div><div className="rkt-club131-list" style={{marginTop:14}}>{loading?'Cargando competiciones…':items.length===0?'Todavía no has creado competiciones.':items.map(x=><div className="rkt-club131-item" key={x.id}><div><strong>{x.title}</strong><small>{x.sport} · {x.city} · {x.starts_on} · {x.is_published?'🟢 Publicada':'⚪ Borrador'}</small></div><div className="rkt-club131-actions"><button type="button" onClick={()=>setExpandedCompetition(v=>v===x.id?null:x.id)}>{expandedCompetition===x.id?"Ocultar pruebas":"Gestionar pruebas"}</button><button type="button" onClick={()=>edit(x)}>Editar</button><button type="button" className={x.is_published?'':'rkt-club131-primary'} onClick={()=>void publish(x)}>{x.is_published?'Retirar':'Publicar'}</button></div>{expandedCompetition===x.id&&<div style={{flexBasis:"100%",width:"100%"}}><CompetitionEventsManager133 competitionId={x.id}/></div>}</div>)}</div></div>
+  <div className="rkt-club131-panel"><h3>Mis competiciones</h3><div className="rkt-club131-note">Solo puedes editar las competiciones creadas con tu cuenta autorizada de club. Publicar las hará visibles para todos los jugadores. Las inscripciones se gestionan desde cada prueba.</div><div className="rkt-club131-list" style={{marginTop:14}}>{loading?'Cargando competiciones…':items.length===0?'Todavía no has creado competiciones.':items.map(x=><div className="rkt-club131-item" key={x.id}><div><strong>{x.title}</strong><small>{x.sport} · {x.city} · {x.starts_on} · {x.is_published?'🟢 Publicada':'⚪ Borrador'}</small></div><div className="rkt-club131-actions"><button type="button" onClick={()=>setExpandedCompetition(v=>v===x.id?null:x.id)}>{expandedCompetition===x.id?"Ocultar pruebas":"Gestionar pruebas"}</button><button type="button" onClick={()=>edit(x)}>Editar</button><button type="button" className={x.is_published?'':'rkt-club131-primary'} onClick={()=>void publish(x)}>{x.is_published?'Retirar':'Publicar'}</button></div>{expandedCompetition===x.id&&<div style={{flexBasis:"100%",width:"100%"}}><CompetitionEventsManager133 competitionId={x.id}/></div>}</div>)}</div></div>
  </section>;
+}
+
+
+type EventEntry136={id:string;event_id:string;player_id:string;partner_id:string|null;status:string;created_at:string};
+function PlayerCompetitions136({userId}:{userId:string}){
+ const [entries,setEntries]=useState<EventEntry136[]>([]);
+ const [events,setEvents]=useState<CompetitionEvent133[]>([]);
+ const [comps,setComps]=useState<RacketonCompetition130[]>([]);
+ const [loading,setLoading]=useState(true);
+ const [error,setError]=useState('');
+ const [busy,setBusy]=useState<string|null>(null);
+ const load=async()=>{
+  if(!supabase)return;
+  const {data,error:e}=await supabase.from('racketon_event_entries')
+   .select('id,event_id,player_id,partner_id,status,created_at')
+   .or(`player_id.eq.${userId},partner_id.eq.${userId}`)
+   .order('created_at',{ascending:false});
+  if(e){setError(e.message);setLoading(false);return;}
+  const mine=(data||[]) as EventEntry136[];
+  setEntries(mine);
+  const ids=Array.from(new Set(mine.map(x=>x.event_id)));
+  if(!ids.length){setEvents([]);setComps([]);setLoading(false);return;}
+  const {data:ev,error:evErr}=await supabase.from('racketon_competition_events')
+   .select('id,competition_id,category,discipline,capacity,status,starts_on,registration_closes_on,notes,is_active').in('id',ids);
+  if(evErr){setError(evErr.message);setLoading(false);return;}
+  const found=(ev||[]) as CompetitionEvent133[];
+  setEvents(found);
+  const compIds=Array.from(new Set(found.map(x=>x.competition_id)));
+  if(compIds.length){
+   const {data:cs,error:ce}=await supabase.from('racketon_competitions')
+    .select('id,title,sport,format,city,region,venue_name,starts_on,ends_on,registration_opens_on,registration_closes_on,capacity,level_min,level_max,description,rules_url,status')
+    .in('id',compIds);
+   if(ce)setError(ce.message);else setComps((cs||[]) as RacketonCompetition130[]);
+  }
+  setLoading(false);
+ };
+ useEffect(()=>{void load()},[userId]);
+ const cancel=async(x:EventEntry136)=>{
+  if(!supabase||!window.confirm('¿Cancelar tu inscripción? La plaza quedará libre.'))return;
+  setBusy(x.id);setError('');
+  const {error:e}=await supabase.rpc('racketon_cancel_entry_136',{p_entry_id:x.id});
+  setBusy(null);
+  if(e){setError(e.message);return;}await load();
+ };
+ const reply=async(x:EventEntry136,accept:boolean)=>{
+  if(!supabase)return;
+  setBusy(x.id);setError('');
+  const {error:e}=await supabase.rpc('racketon_confirm_partner_135',{p_entry_id:x.id,p_accept:accept});
+  setBusy(null);if(e){setError(e.message);return;}await load();
+ };
+ return <div className="rkt136">
+ <style>{`.rkt136{display:grid;gap:15px}.rkt136-hero{background:linear-gradient(110deg,#172033,#8d1233);border-radius:17px;color:white;padding:25px}.rkt136-hero h2{margin:0 0 7px;font-size:25px}.rkt136-hero p{margin:0;color:#f5dbe2;font-size:13px}.rkt136-stats{display:flex;gap:12px;flex-wrap:wrap}.rkt136-stat{background:white;border:1px solid #e4e7ec;border-radius:12px;padding:14px 18px;flex:1;min-width:125px}.rkt136-stat strong{display:block;font-size:24px;color:#c8102e}.rkt136-stat span{font-size:12px;color:#667085}.rkt136-list{display:grid;gap:12px}.rkt136-item{background:white;border:1px solid #e4e7ec;border-radius:14px;padding:18px;display:grid;gap:10px}.rkt136-item h3{margin:0;font-size:18px}.rkt136-item small{color:#667085}.rkt136-pill{background:#f3f4f6;color:#475467;border-radius:100px;padding:6px 10px;font-size:11px;font-weight:800;display:inline-block}.rkt136-item button{border:1px solid #d7dce5;border-radius:9px;background:white;padding:9px 12px;font-weight:800;cursor:pointer}.rkt136-item button.primary{background:#c8102e;border-color:#c8102e;color:white}.rkt136-actions{display:flex;gap:8px;flex-wrap:wrap}.rkt136-error{background:#fff1f2;color:#9f1239;padding:13px;border-radius:10px}`}</style>
+ <header className="rkt136-hero"><h2>Mis competiciones</h2><p>Todas tus inscripciones, pruebas y solicitudes de pareja, en un mismo lugar.</p></header>
+ <div className="rkt136-stats"><div className="rkt136-stat"><strong>{entries.filter(x=>x.status==='confirmed').length}</strong><span>Inscripciones confirmadas</span></div><div className="rkt136-stat"><strong>{entries.filter(x=>x.status==='pending_partner').length}</strong><span>Parejas pendientes</span></div><div className="rkt136-stat"><strong>{entries.filter(x=>x.status==='cancelled').length}</strong><span>Canceladas</span></div></div>
+ {error&&<div className="rkt136-error">{error}</div>}
+ {loading?<p>Cargando inscripciones…</p>:entries.length===0?<div className="rkt136-item">Todavía no tienes inscripciones. Explora competiciones para participar en una prueba.</div>:<div className="rkt136-list">{entries.map(x=>{
+ const ev=events.find(v=>v.id===x.event_id);const c=comps.find(v=>v.id===ev?.competition_id);
+ const partnerInvite=x.partner_id===userId&&x.status==='pending_partner';
+ return <article className="rkt136-item" key={x.id}><div><span className="rkt136-pill">{x.status==='confirmed'?'✓ Confirmada':x.status==='pending_partner'?'⏳ Pendiente de pareja':'Cancelada'}</span></div><h3>{c?.title||'Competición'}</h3><strong>{ev?`${ev.category} · ${ev.discipline}`:'Prueba'}</strong><small>{c?.city||''} · {ev?.starts_on||c?.starts_on||'Fecha pendiente'}</small><small>{x.partner_id?'Modalidad de dobles':'Modalidad individual'}</small><div className="rkt136-actions">{partnerInvite&&<><button className="primary" disabled={busy===x.id} onClick={()=>void reply(x,true)}>Aceptar pareja</button><button disabled={busy===x.id} onClick={()=>void reply(x,false)}>Rechazar</button></>}{x.status!=='cancelled'&&x.player_id===userId&&<button disabled={busy===x.id} onClick={()=>void cancel(x)}>Cancelar inscripción</button>}</div></article>})}</div>}
+ </div>;
+}
+function ClubEntries136({eventId}:{eventId:string}){
+ const [entries,setEntries]=useState<EventEntry136[]>([]);
+ const [error,setError]=useState('');
+ const [loading,setLoading]=useState(true);
+ const [busy,setBusy]=useState<string|null>(null);
+ const load=async()=>{
+  if(!supabase)return;
+  const {data,error:e}=await supabase.rpc('racketon_organizer_entries_136',{p_event_id:eventId});
+  setLoading(false);if(e){setError(e.message);return;}
+  setEntries((data||[]) as EventEntry136[]);
+ };
+ useEffect(()=>{void load()},[eventId]);
+ const cancel=async(x:EventEntry136)=>{
+  if(!supabase||!window.confirm('¿Dar de baja esta inscripción?'))return;
+  setBusy(x.id);
+  const {error:e}=await supabase.rpc('racketon_organizer_cancel_entry_136',{p_entry_id:x.id});
+  setBusy(null);if(e){setError(e.message);return;}await load();
+ };
+ return <div style={{background:'#fff',border:'1px solid #e4e7ec',padding:14,borderRadius:12,display:'grid',gap:10}}>
+  <div style={{display:'flex',justifyContent:'space-between',gap:10,alignItems:'center',flexWrap:'wrap'}}><strong>Inscripciones · {entries.filter(x=>x.status!=='cancelled').length} activas</strong><button type="button" onClick={()=>void load()}>Actualizar</button></div>
+  {error&&<p style={{color:'#b91c1c'}}>No se pudieron consultar los inscritos: {error}</p>}
+  {loading?<span>Cargando participantes…</span>:entries.length===0?<span style={{fontSize:12,color:'#667085'}}>Todavía no hay inscritos.</span>:entries.map(x=><div key={x.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,borderTop:'1px solid #e4e7ec',paddingTop:9,flexWrap:'wrap'}}>
+  <div><strong style={{fontSize:12}}>Jugador {x.player_id.slice(0,8)}{x.partner_id?' + pareja '+x.partner_id.slice(0,8):''}</strong><div style={{fontSize:11,color:'#667085'}}>{x.status==='confirmed'?'Confirmada':x.status==='pending_partner'?'Pendiente de pareja':'Cancelada'} · {new Date(x.created_at).toLocaleDateString('es-ES')}</div></div>
+  {x.status!=='cancelled'&&<button type="button" disabled={busy===x.id} onClick={()=>void cancel(x)}>Dar de baja</button>}
+  </div>)}
+  <small style={{color:'#667085'}}>La identificación por nombre y el rating se incorporarán cuando conectemos el directorio público de jugadores con controles de privacidad.</small>
+ </div>;
 }
 
 function PendingPlayerModule({title,description}:{title:string;description:string}){
@@ -900,6 +991,7 @@ function PlayerNavigation112({user,opponent,onClearOpponent,onChallenge}:{user:U
   <div className="rkt-mobile-sub">{playerArchitecture.find(x=>x.name===area)!.children.map(child=><button key={child} className={sub===child?'active':''} onClick={()=>setSub(child)}>{child}</button>)}</div>
   <div className="rkt-screen-body">
   {area==='Inicio'&&sub==='Mi panel'?<PlayerHome102 user={user} onNavigate={(old:Tab)=>{if(old==='Desafíos'||old==='Jugadores')go('Competir','Desafíos');else if(old==='Rankings'||old==='Mis ligas')go('Clasificaciones',old==='Mis ligas'?'Mis ligas':'Clasificaciones RACKETON');else if(old==='Perfil'){setDataTab('Datos personales');go('Inicio','Mis datos')}else if(old==='Reservas')go('Reservas');else if(old==='Torneos')go('Competir','Explorar competiciones');}}/>:
+  area==='Competir'&&sub==='Mis competiciones'?<PlayerCompetitions136 userId={user.id}/>:
   area==='Competir'&&sub==='Explorar competiciones'?<CompetitionExplorer130 userId={user.id}/>:
   area==='Competir'&&sub==='Desafíos'?<><div style={navCard}><h2>Buscar rivales y organizar partidos libres</h2><p>Los desafíos son partidos individuales o de dobles fuera de las competiciones organizadas.</p><PlayerSearch userId={user.id} onChallenge={p=>{onChallenge(p);go('Competir','Desafíos')}}/></div><div style={navCard}><h2>Desafíos individuales</h2><TennisChallenges userId={user.id} opponent={opponent} onClose={onClearOpponent}/></div><div style={navCard}><h2>Resultados y confirmaciones</h2><TennisResults userId={user.id}/></div><div style={navCard}><h2>Desafíos de dobles</h2><RacketonDoubles107 userId={user.id}/></div></>:
   area==='Clasificaciones'&&sub==='Clasificaciones RACKETON'?<RacketonNationalRanking108 userId={user.id} onChallenge={(p:{id:string;name:string})=>{onChallenge(p);go('Competir','Desafíos')}}/>:
