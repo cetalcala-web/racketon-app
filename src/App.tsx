@@ -62,7 +62,7 @@ function PlayerProfile({user,mode='personal'}:{user:User;mode?:'personal'|'priva
   const [loading,setLoading] = useState(true);
   const [saving,setSaving] = useState(false);
   const [message,setMessage] = useState('');
-  const [discoverable,setDiscoverable] = useState(false);
+  const [discoverable,setDiscoverable] = useState(true);
   const [country,setCountry] = useState('');
   const [rankingSex,setRankingSex] = useState('');
   const [nationality,setNationality] = useState('');
@@ -88,7 +88,7 @@ function PlayerProfile({user,mode='personal'}:{user:User;mode?:'personal'|'priva
       const {data:visibility,error:visibilityError}=await supabase.from('player_discovery_preferences').select('discoverable,country,nationality,show_nationality').eq('user_id',user.id).maybeSingle();
       if(!active)return;
       if(visibilityError)setMessage('No se pudo cargar la visibilidad: '+visibilityError.message);
-      else {setDiscoverable(visibility?.discoverable===true);setCountry(visibility?.country??'');setNationality(visibility?.nationality??'');setShowNationality(visibility?.show_nationality===true);}
+      else {setDiscoverable(visibility?.discoverable!==false);setCountry(visibility?.country??'');setNationality(visibility?.nationality??'');setShowNationality(visibility?.show_nationality===true);}
       setLoading(false);
     }
     void load();return()=>{active=false};
@@ -152,8 +152,8 @@ function PlayerProfile({user,mode='personal'}:{user:User;mode?:'personal'|'priva
         </div>
       </div>
       <div className="rkt-personal-card"><div className="rkt-personal-card-title"><div><h2>Mi cuenta</h2><p>Información de acceso a la aplicación.</p></div></div><div className="rkt-personal-email"><span>Correo electrónico de acceso</span><strong>{user.email}</strong><small>El cambio de correo y contraseña se gestionará desde Configuración.</small></div></div>
-      </>:<div className="rkt-personal-card"><div className="rkt-personal-card-title"><div><h2>Privacidad y visibilidad</h2><p>Decide qué información puede consultar la comunidad de jugadores.</p></div></div>
-        <div className="rkt-personal-toggles"><label><input type="checkbox" checked={discoverable} onChange={e=>setDiscoverable(e.target.checked)}/><span><strong>Mostrar mi perfil en el buscador de jugadores</strong><small>Otros jugadores podrán encontrar tu nombre deportivo, ciudad y datos deportivos públicos. Nunca se mostrará tu correo electrónico.</small></span></label><label><input type="checkbox" checked={showNationality} onChange={e=>setShowNationality(e.target.checked)}/><span><strong>Mostrar mi nacionalidad</strong><small>Permite que otros jugadores vean tu nacionalidad en el perfil público.</small></span></label></div>
+      </>:<div className="rkt-personal-card"><div className="rkt-personal-card-title"><div><h2>Privacidad y visibilidad</h2><p>Tu perfil aparece en las búsquedas por defecto. Puedes ocultarlo cuando quieras.</p></div></div>
+        <div className="rkt-personal-toggles"><label><input type="checkbox" checked={discoverable} onChange={e=>setDiscoverable(e.target.checked)}/><span><strong>Permitir que otros jugadores encuentren mi perfil</strong><small>Tu perfil es público por defecto. Si desactivas esta opción, dejarás de aparecer en las búsquedas y no recibirás nuevos desafíos de jugadores que te descubran allí. Tu correo electrónico y tus datos de contacto siempre serán privados.</small></span></label><label><input type="checkbox" checked={showNationality} onChange={e=>setShowNationality(e.target.checked)}/><span><strong>Mostrar mi nacionalidad</strong><small>Permite que otros jugadores vean tu nacionalidad en el perfil público.</small></span></label></div>
         {discoverable&&(!country.trim()||!details.city.trim()||!details.display_name.trim())&&<p className="rkt-personal-warning">Para aparecer en el buscador, completa el nombre, la localidad y el país en Datos personales.</p>}
       </div>}
       <div className="rkt-personal-save"><button className="primary" type="submit" disabled={saving}>{saving?'Guardando...':'Guardar cambios'}</button>{message&&<span role="status" style={{color:message.includes('correctamente')?'#137442':'#b42332',fontWeight:650,fontSize:13}}>{message}</span>}</div>
