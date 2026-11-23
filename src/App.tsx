@@ -283,6 +283,63 @@ const playerArchitecture: {name:PlayerArea;children:string[]}[] = [
  {name:'Reservas',children:['Buscar pistas','Mis reservas','Mis clubes']}
 ];
 const navCard:React.CSSProperties={background:'#fff',border:'1px solid #e2e8f0',borderRadius:14,padding:22,marginTop:18};
+
+function PlayerAccountSettings119({user}:{user:User}){
+ const [newPassword,setNewPassword]=useState('');
+ const [confirmPassword,setConfirmPassword]=useState('');
+ const [showPassword,setShowPassword]=useState(false);
+ const [newEmail,setNewEmail]=useState('');
+ const [busy,setBusy]=useState(false);
+ const [notice,setNotice]=useState('');
+ const [noticeError,setNoticeError]=useState(false);
+ const initialPreferences=(user.user_metadata?.racketon_notifications??{}) as Record<string,unknown>;
+ const [challengeNotices,setChallengeNotices]=useState(initialPreferences.challenges!==false);
+ const [competitionNotices,setCompetitionNotices]=useState(initialPreferences.competitions!==false);
+ const [newsNotices,setNewsNotices]=useState(initialPreferences.news===true);
+ async function updatePassword(e:React.FormEvent){
+  e.preventDefault();if(!supabase)return;
+  if(newPassword.length<8){setNoticeError(true);setNotice('La contraseña debe tener al menos 8 caracteres.');return;}
+  if(newPassword!==confirmPassword){setNoticeError(true);setNotice('Las contraseñas no coinciden.');return;}
+  setBusy(true);setNotice('');
+  const {error}=await supabase.auth.updateUser({password:newPassword});
+  setBusy(false);setNoticeError(!!error);
+  setNotice(error?'No se pudo cambiar la contraseña: '+error.message:'Contraseña actualizada correctamente.');
+  if(!error){setNewPassword('');setConfirmPassword('');}
+ }
+ async function updateEmail(e:React.FormEvent){
+  e.preventDefault();if(!supabase)return;
+  const email=newEmail.trim();
+  if(!email||email.toLowerCase()===user.email?.toLowerCase()){setNoticeError(true);setNotice('Introduce una dirección de correo diferente.');return;}
+  setBusy(true);setNotice('');
+  const {error}=await supabase.auth.updateUser({email});
+  setBusy(false);setNoticeError(!!error);
+  setNotice(error?'No se pudo solicitar el cambio: '+error.message:'Solicitud enviada. Revisa los correos de confirmación necesarios antes de que cambie tu dirección.');
+  if(!error)setNewEmail('');
+ }
+ async function savePreferences(){
+  if(!supabase)return;
+  setBusy(true);setNotice('');
+  const existing=user.user_metadata?.racketon_notifications??{};
+  const {error}=await supabase.auth.updateUser({data:{racketon_notifications:{...existing,challenges:challengeNotices,competitions:competitionNotices,news:newsNotices}}});
+  setBusy(false);setNoticeError(!!error);
+  setNotice(error?'No se pudieron guardar las preferencias: '+error.message:'Preferencias guardadas correctamente.');
+ }
+ return <div className="rkt-personal-wrap">
+  <div className="rkt-personal-account"><div className="rkt-personal-account-icon"><ShieldCheck size={21}/></div><div><strong>Seguridad de tu cuenta</strong><span>{user.email}</span></div><span className="rkt-personal-account-state">Cuenta activa</span></div>
+  <div className="rkt-personal-card"><div className="rkt-personal-card-title"><div><h2>Correo electrónico</h2><p>Tu dirección de acceso es privada y nunca aparece en las búsquedas.</p></div></div>
+   <form className="rkt-settings-form" onSubmit={updateEmail}><label>Correo actual<input type="email" value={user.email??''} readOnly aria-label="Correo electrónico actual"/></label><label>Nuevo correo electrónico<input type="email" required autoComplete="email" value={newEmail} onChange={e=>setNewEmail(e.target.value)} placeholder="nuevo@correo.com"/></label><button className="primary" type="submit" disabled={busy}>Solicitar cambio de correo</button><p className="rkt-settings-help">Por seguridad, Supabase puede solicitar confirmación por correo antes de aplicar el cambio.</p></form>
+  </div>
+  <div className="rkt-personal-card"><div className="rkt-personal-card-title"><div><h2>Cambiar contraseña</h2><p>Actualiza la contraseña con la que accedes a RACKETON.</p></div></div>
+   <form className="rkt-settings-form" onSubmit={updatePassword}><label>Nueva contraseña<input type={showPassword?'text':'password'} minLength={8} required autoComplete="new-password" value={newPassword} onChange={e=>setNewPassword(e.target.value)} placeholder="Mínimo 8 caracteres"/></label><label>Repetir nueva contraseña<input type={showPassword?'text':'password'} minLength={8} required autoComplete="new-password" value={confirmPassword} onChange={e=>setConfirmPassword(e.target.value)} placeholder="Repite tu contraseña"/></label><label className="rkt-settings-checkbox"><input type="checkbox" checked={showPassword} onChange={e=>setShowPassword(e.target.checked)}/> Mostrar contraseñas</label><button className="primary" type="submit" disabled={busy}>Actualizar contraseña</button></form>
+  </div>
+  <div className="rkt-personal-card"><div className="rkt-personal-card-title"><div><h2>Preferencias de comunicaciones</h2><p>Guarda qué comunicaciones deseas recibir. La entrega automática de avisos se activará cuando esté disponible el sistema de notificaciones.</p></div></div>
+   <div className="rkt-personal-toggles"><label><input type="checkbox" checked={challengeNotices} onChange={e=>setChallengeNotices(e.target.checked)}/><span><strong>Desafíos y resultados</strong><small>Solicitudes de partidos, confirmaciones y resultados pendientes.</small></span></label><label><input type="checkbox" checked={competitionNotices} onChange={e=>setCompetitionNotices(e.target.checked)}/><span><strong>Competiciones y reservas</strong><small>Información sobre tus inscripciones y actividades.</small></span></label><label><input type="checkbox" checked={newsNotices} onChange={e=>setNewsNotices(e.target.checked)}/><span><strong>Novedades de RACKETON</strong><small>Noticias y comunicaciones generales, desactivadas por defecto.</small></span></label></div>
+   <div className="rkt-settings-footer"><button className="primary" type="button" disabled={busy} onClick={()=>void savePreferences()}>Guardar preferencias</button></div>
+  </div>
+  {notice&&<div role="status" className={'rkt-settings-notice '+(noticeError?'error':'success')}>{notice}</div>}
+ </div>;
+}
+
 function PendingPlayerModule({title,description}:{title:string;description:string}){
  return <div style={navCard}><h2 style={{marginTop:0}}>{title}</h2><p style={{color:'#64748b'}}>{description}</p><span style={{fontSize:12,color:'#9a3412',fontWeight:700}}>PENDIENTE DE DESARROLLO · No disponible todavía</span></div>;
 }
@@ -308,6 +365,7 @@ function PlayerNavigation112({user,opponent,onClearOpponent,onChallenge}:{user:U
   <style>{`
 
   .rkt-personal-section{max-width:980px}.rkt-personal-tabs{display:flex;gap:8px;flex-wrap:wrap;margin:0 0 20px}.rkt-personal-tabs button{display:flex;align-items:center;gap:9px;border:1px solid #e4e7ed;background:white;border-radius:11px;padding:12px 15px;font-size:13px;font-weight:750;color:#536075;cursor:pointer}.rkt-personal-tabs button.active{background:#fff0f3;border-color:#e6a4b1;color:#b90d31}.rkt-personal-wrap{display:grid;gap:16px}.rkt-personal-account{display:flex;align-items:center;gap:13px;padding:16px 20px;background:#fff;border:1px solid #e6e9ef;border-radius:15px}.rkt-personal-account-icon{display:grid;place-items:center;background:#fff0f3;color:#c8102e;border-radius:12px;width:43px;height:43px}.rkt-personal-account>div:nth-child(2){display:flex;flex-direction:column;gap:3px;min-width:0}.rkt-personal-account strong{font-size:14px}.rkt-personal-account span{font-size:12px;color:#6b7585;overflow-wrap:anywhere}.rkt-personal-account-state{margin-left:auto;background:#edf9f1;color:#137442!important;padding:6px 10px;border-radius:30px;white-space:nowrap;font-weight:750}.rkt-personal-form{display:grid;gap:16px}.rkt-personal-card{background:#fff;border:1px solid #e6e9ef;border-radius:16px;padding:clamp(18px,2.6vw,28px)}.rkt-personal-card-title{border-bottom:1px solid #eff0f4;padding-bottom:17px;margin-bottom:20px}.rkt-personal-card-title h2{margin:0 0 5px;font-size:19px;letter-spacing:-.45px}.rkt-personal-card-title p{margin:0;color:#778294;font-size:13px}.rkt-personal-photo-row{display:flex;gap:22px;align-items:center;flex-wrap:wrap}.rkt-personal-avatar{width:104px;height:104px;object-fit:cover;border-radius:50%;border:3px solid #f3d9de;flex-shrink:0}.rkt-personal-avatar-empty{display:grid;place-items:center;background:#f3f4f7;color:#9aa4b2}.rkt-personal-photo-info{display:flex;flex-direction:column;gap:9px;flex:1;min-width:200px}.rkt-personal-photo-info strong{font-size:14px}.rkt-personal-photo-info>span{font-size:12px;color:#778294;line-height:1.6}.rkt-personal-actions{display:flex;gap:8px;flex-wrap:wrap}.rkt-personal-upload,.rkt-personal-secondary{border:1px solid #c8102e;background:#c8102e;color:white;border-radius:9px;padding:10px 13px;font-size:12px;font-weight:800;cursor:pointer}.rkt-personal-secondary{background:#fff;border-color:#e0e4ea;color:#475467}.rkt-personal-fields{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:20px}.rkt-personal-fields label{display:flex;flex-direction:column;gap:8px;font-size:12px;font-weight:800;color:#344054}.rkt-personal-fields input,.rkt-personal-fields select{box-sizing:border-box;width:100%;border:1px solid #dce1e9;border-radius:10px;background:#fff;padding:12px 13px;font:inherit;font-size:14px;font-weight:500;color:#172033;min-height:46px}.rkt-personal-fields input:focus,.rkt-personal-fields select:focus{outline:2px solid #e8a5b2;border-color:#c8102e}.rkt-personal-email{display:flex;flex-direction:column;gap:7px}.rkt-personal-email span{font-size:12px;color:#6b7585}.rkt-personal-email strong{font-size:14px;overflow-wrap:anywhere}.rkt-personal-email small{font-size:12px;color:#8b95a5}.rkt-personal-toggles{display:grid;gap:18px}.rkt-personal-toggles label{display:flex;align-items:flex-start;gap:12px;cursor:pointer}.rkt-personal-toggles input{width:18px;height:18px;accent-color:#c8102e;flex-shrink:0}.rkt-personal-toggles label span{display:flex;flex-direction:column;gap:5px}.rkt-personal-toggles strong{font-size:14px}.rkt-personal-toggles small{font-size:12px;color:#778294;line-height:1.5}.rkt-personal-warning{color:#a43d18;font-size:13px}.rkt-personal-save{display:flex;align-items:center;gap:14px;flex-wrap:wrap;padding:4px 0 14px}.rkt-personal-save .primary{display:inline-flex;align-items:center;justify-content:center;min-width:170px}.rkt-personal-section .rkt-personal-fields .country-select{max-width:100%}@media(max-width:580px){.rkt-personal-fields{grid-template-columns:1fr}.rkt-personal-tabs button{flex:1 1 42%;justify-content:center}.rkt-personal-account-state{display:none}}
+  .rkt-settings-form{display:grid;gap:15px;max-width:580px}.rkt-settings-form>label:not(.rkt-settings-checkbox){display:grid;gap:7px;color:#344054;font-size:12px;font-weight:800}.rkt-settings-form input:not([type=checkbox]){width:100%;box-sizing:border-box;border:1px solid #dce1e9;border-radius:10px;padding:12px 13px;font-size:14px;color:#172033;background:#fff;min-height:46px}.rkt-settings-form input[readonly]{background:#f5f6f9;color:#667085}.rkt-settings-form .primary,.rkt-settings-footer .primary{justify-self:start;width:fit-content;min-height:42px}.rkt-settings-checkbox{display:flex;align-items:center;gap:9px;font-size:12px;color:#475467}.rkt-settings-checkbox input{accent-color:#c8102e}.rkt-settings-help{font-size:12px;line-height:1.5;color:#778294;margin:0}.rkt-settings-footer{margin-top:20px}.rkt-settings-notice{border:1px solid #b6e4c5;border-radius:11px;background:#f0fbf3;color:#137442;padding:13px 16px;font-size:13px;font-weight:700}.rkt-settings-notice.error{border-color:#f1c4ca;background:#fff2f4;color:#b42332}
   .rkt-player-shell{--rk-red:#cc1237;--rk-ink:#172033;--rk-muted:#667085;display:grid;grid-template-columns:256px minmax(0,1fr);min-height:calc(100vh - 160px);width:100%;max-width:1600px;margin:0 auto;background:#f5f6f9;color:var(--rk-ink);font-family:inherit}
   .rkt-sidebar{background:#fff;border-right:1px solid #e9ebf0;padding:28px 15px 30px;display:flex;flex-direction:column;gap:7px}
   .rkt-sidebar-title{font-size:10px;letter-spacing:2px;color:#9299a6;font-weight:900;padding:0 14px;margin:6px 0 13px}
@@ -344,7 +402,7 @@ function PlayerNavigation112({user,opponent,onClearOpponent,onChallenge}:{user:U
   area==='Clasificaciones'&&sub==='Historial'?<div style={navCard}><h2>Historial y evolución del rating · Tenis</h2><TennisRatingHistory userId={user.id}/><p style={{fontSize:13,color:'#64748b'}}>Las estadísticas históricas de pádel y pickleball se incorporarán cuando haya resultados competitivos disponibles.</p></div>:
   area==='Inicio'&&sub==='Mis datos'?<div className="rkt-personal-section">
     <div className="rkt-personal-tabs">{([{name:'Datos personales',icon:UserRound},{name:'Privacidad',icon:ShieldCheck},{name:'Configuración',icon:UserPen},{name:'Mi monedero',icon:Wallet}] as {name:string;icon:LucideIcon}[]).map(item=>{const I=item.icon;return <button key={item.name} className={dataTab===item.name?'active':''} type="button" onClick={()=>setDataTab(item.name)}><I size={17}/>{item.name}</button>})}</div>
-    {dataTab==='Datos personales'?<PlayerProfile user={user} mode="personal"/>:dataTab==='Privacidad'?<PlayerProfile user={user} mode="privacy"/>:<PendingPlayerModule title={dataTab} description={planned[dataTab]||'Esta sección se desarrollará próximamente.'}/>}
+    {dataTab==='Datos personales'?<PlayerProfile user={user} mode="personal"/>:dataTab==='Privacidad'?<PlayerProfile user={user} mode="privacy"/>:dataTab==='Configuración'?<PlayerAccountSettings119 user={user}/>:<PendingPlayerModule title={dataTab} description={planned[dataTab]||'Esta sección se desarrollará próximamente.'}/>}
   </div>:
   <PendingPlayerModule title={sub} description={planned[sub]||'Este módulo se implementará de forma independiente, manteniendo la navegación aprobada.'}/>}
   </div></div>
