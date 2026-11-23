@@ -653,6 +653,41 @@ const emptyCompetition131:ClubCompetitionForm131={
  capacity:'',level_min:'',level_max:'',description:'',rules_url:'',
  poster_url:'',category_system:'Edad',categories:[],events:[]
 };
+
+type CompetitionEvent133={id:string;competition_id:string;category:string;discipline:string;capacity:number|null;status:string;starts_on:string|null;registration_closes_on:string|null;notes:string|null};
+const eventStatuses133=[['draft','Borrador'],['registration_open','Inscripción abierta'],['registration_closed','Inscripción cerrada'],['draw_published','Cuadro publicado'],['in_progress','En juego'],['completed','Finalizada'],['cancelled','Cancelada']];
+function CompetitionEventsManager133({competitionId}:{competitionId:string}){
+ const [events,setEvents]=useState<CompetitionEvent133[]>([]);
+ const [error,setError]=useState('');
+ const [loading,setLoading]=useState(true);
+ const [saving,setSaving]=useState<string|null>(null);
+ const load=async()=>{
+  if(!supabase)return;
+  const {data,error:e}=await supabase.from('racketon_competition_events').select('id,competition_id,category,discipline,capacity,status,starts_on,registration_closes_on,notes').eq('competition_id',competitionId).order('category').order('discipline');
+  setLoading(false);if(e){setError(e.message);return;}setEvents((data||[]) as CompetitionEvent133[]);
+ };
+ useEffect(()=>{void load()},[competitionId]);
+ const patch=(id:string,values:Partial<CompetitionEvent133>)=>setEvents(a=>a.map(x=>x.id===id?{...x,...values}:x));
+ const save=async(x:CompetitionEvent133)=>{
+  if(!supabase)return;setSaving(x.id);setError('');
+  const {error:e}=await supabase.from('racketon_competition_events').update({capacity:x.capacity,status:x.status,starts_on:x.starts_on,registration_closes_on:x.registration_closes_on,notes:x.notes}).eq('id',x.id).eq('competition_id',competitionId);
+  setSaving(null);if(e)setError(e.message);
+ };
+ return <div style={{display:'grid',gap:10,marginTop:12}}>
+ {error&&<p style={{color:'#b91c1c',fontSize:12}}>No se pudieron gestionar las pruebas: {error}. Comprueba el SQL 0044.</p>}
+ {loading?<p>Cargando pruebas…</p>:events.length===0?<p style={{fontSize:13,color:'#64748b'}}>No hay pruebas. Edita el torneo y selecciona categorías y modalidades.</p>:events.map(x=><div key={x.id} style={{border:'1px solid #e2e8f0',borderRadius:12,padding:14,background:'#f8fafc',display:'grid',gap:10}}>
+ <strong style={{fontSize:14}}>{x.category} · {x.discipline}</strong>
+ <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:10}}>
+ <label style={{fontSize:12}}>Estado<select style={{display:'block',width:'100%',padding:8}} value={x.status} onChange={e=>patch(x.id,{status:e.target.value})}>{eventStatuses133.map(([v,t])=><option value={v} key={v}>{t}</option>)}</select></label>
+ <label style={{fontSize:12}}>Plazas<input style={{display:'block',width:'100%',padding:8}} type="number" min={1} value={x.capacity??''} onChange={e=>patch(x.id,{capacity:e.target.value?Number(e.target.value):null})}/></label>
+ <label style={{fontSize:12}}>Fecha de prueba<input style={{display:'block',width:'100%',padding:8}} type="date" value={x.starts_on||''} onChange={e=>patch(x.id,{starts_on:e.target.value||null})}/></label>
+ <label style={{fontSize:12}}>Cierre inscripción<input style={{display:'block',width:'100%',padding:8}} type="date" value={x.registration_closes_on||''} onChange={e=>patch(x.id,{registration_closes_on:e.target.value||null})}/></label>
+ </div><label style={{fontSize:12}}>Observaciones<input style={{display:'block',width:'100%',padding:8}} value={x.notes||''} onChange={e=>patch(x.id,{notes:e.target.value})}/></label>
+ <div><button type="button" onClick={()=>void save(x)} disabled={saving===x.id}>{saving===x.id?'Guardando…':'Guardar esta prueba'}</button></div>
+ </div>)}
+ </div>;
+}
+
 function ClubCompetitionManager131({userId}:{userId:string}){
  const [form,setForm]=useState<ClubCompetitionForm131>(emptyCompetition131);
  const [editing,setEditing]=useState<string|null>(null);
@@ -660,6 +695,7 @@ function ClubCompetitionManager131({userId}:{userId:string}){
  const [items,setItems]=useState<Array<RacketonCompetition130&{is_published:boolean}>>([]);
  const [loading,setLoading]=useState(true);
  const [saving,setSaving]=useState(false);
+ const [expandedCompetition,setExpandedCompetition]=useState<string|null>(null);
  const [notice,setNotice]=useState('');
  const [isError,setIsError]=useState(false);
  const set=(k:keyof ClubCompetitionForm131,v:string)=>setForm(f=>({...f,[k]:v}));
@@ -751,7 +787,7 @@ function ClubCompetitionManager131({userId}:{userId:string}){
   <label className="rkt-club131-wide">Enlace HTTPS al reglamento<input type="url" value={form.rules_url} onChange={e=>set('rules_url',e.target.value)} placeholder="https://..."/></label>
   </div><div className="rkt-club131-actions"><button className="rkt-club131-primary" type="submit" disabled={saving}>{saving?'Guardando…':editing?'Guardar cambios':'Guardar borrador'}</button>{editing&&<button type="button" onClick={()=>{setEditing(null);setForm(emptyCompetition131);setPosterFile(null)}}>Cancelar edición</button>}</div></form></div>
   {notice&&<div role="status" className={'rkt-club131-alert'+(isError?' error':'')}>{notice}</div>}
-  <div className="rkt-club131-panel"><h3>Mis competiciones</h3><div className="rkt-club131-note">Solo puedes editar las competiciones creadas con tu cuenta autorizada de club. Publicar las hará visibles para todos los jugadores. Las inscripciones online llegarán en la siguiente fase.</div><div className="rkt-club131-list" style={{marginTop:14}}>{loading?'Cargando competiciones…':items.length===0?'Todavía no has creado competiciones.':items.map(x=><div className="rkt-club131-item" key={x.id}><div><strong>{x.title}</strong><small>{x.sport} · {x.city} · {x.starts_on} · {x.is_published?'🟢 Publicada':'⚪ Borrador'}</small></div><div className="rkt-club131-actions"><button type="button" onClick={()=>edit(x)}>Editar</button><button type="button" className={x.is_published?'':'rkt-club131-primary'} onClick={()=>void publish(x)}>{x.is_published?'Retirar':'Publicar'}</button></div></div>)}</div></div>
+  <div className="rkt-club131-panel"><h3>Mis competiciones</h3><div className="rkt-club131-note">Solo puedes editar las competiciones creadas con tu cuenta autorizada de club. Publicar las hará visibles para todos los jugadores. Las inscripciones online llegarán en la siguiente fase.</div><div className="rkt-club131-list" style={{marginTop:14}}>{loading?'Cargando competiciones…':items.length===0?'Todavía no has creado competiciones.':items.map(x=><div className="rkt-club131-item" key={x.id}><div><strong>{x.title}</strong><small>{x.sport} · {x.city} · {x.starts_on} · {x.is_published?'🟢 Publicada':'⚪ Borrador'}</small></div><div className="rkt-club131-actions"><button type="button" onClick={()=>setExpandedCompetition(v=>v===x.id?null:x.id)}>{expandedCompetition===x.id?"Ocultar pruebas":"Gestionar pruebas"}</button><button type="button" onClick={()=>edit(x)}>Editar</button><button type="button" className={x.is_published?'':'rkt-club131-primary'} onClick={()=>void publish(x)}>{x.is_published?'Retirar':'Publicar'}</button></div>{expandedCompetition===x.id&&<div style={{flexBasis:"100%",width:"100%"}}><CompetitionEventsManager133 competitionId={x.id}/></div>}</div>)}</div></div>
  </section>;
 }
 
