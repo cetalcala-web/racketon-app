@@ -340,6 +340,23 @@ function PlayerAccountSettings119({user}:{user:User}){
  </div>;
 }
 
+function PlayerWallet120(){
+ return <div className="rkt-personal-wrap">
+  <div className="rkt-personal-card rkt-wallet-hero">
+   <div className="rkt-personal-card-title"><div><h2>Mi monedero RACKETON</h2><p>Gestiona desde aquí los futuros pagos de inscripciones, reservas y servicios de la plataforma.</p></div><Wallet size={27}/></div>
+   <div className="rkt-wallet-balance"><span>Saldo disponible</span><strong>— €</strong><small>Saldo no disponible: los pagos todavía no están activados.</small></div>
+   <div className="rkt-wallet-actions"><button type="button" disabled>Recargar saldo</button><button type="button" disabled>Retirar saldo</button></div>
+  </div>
+  <div className="rkt-personal-card"><div className="rkt-personal-card-title"><div><h2>Movimientos</h2><p>Aquí aparecerán los cargos, recargas, devoluciones y pagos cuando se active el servicio.</p></div><History size={21}/></div>
+   <div className="rkt-wallet-empty"><Wallet size={30}/><strong>Todavía no hay movimientos disponibles</strong><span>No se han habilitado operaciones con dinero real.</span></div>
+  </div>
+  <div className="rkt-personal-card"><div className="rkt-personal-card-title"><div><h2>Seguridad y pagos</h2><p>Los pagos se habilitarán cuando RACKETON integre un proveedor de pagos autorizado.</p></div><ShieldCheck size={22}/></div>
+   <p className="rkt-wallet-note">RACKETON no almacena números de tarjeta en esta pantalla. Hasta completar la integración de pagos y su verificación, no se aceptarán recargas ni se mostrará un saldo ficticio.</p>
+  </div>
+  <style>{`.rkt-wallet-hero{background:linear-gradient(125deg,#fff 55%,#fff0f0)}.rkt-wallet-balance{border:1px solid #f0d9d9;border-radius:16px;padding:23px;margin-top:16px;background:#fff;display:flex;flex-direction:column;gap:7px}.rkt-wallet-balance>span{font-size:13px;color:#64748b;font-weight:700}.rkt-wallet-balance strong{font-size:39px;color:#1e293b;letter-spacing:-1px}.rkt-wallet-balance small{color:#64748b}.rkt-wallet-actions{display:flex;gap:10px;margin-top:15px;flex-wrap:wrap}.rkt-wallet-actions button{padding:11px 18px;border-radius:10px;border:1px solid #e2e8f0;background:#f1f5f9;color:#94a3b8;cursor:not-allowed;font-weight:700}.rkt-wallet-empty{display:flex;flex-direction:column;align-items:center;text-align:center;gap:9px;padding:35px 12px;color:#64748b}.rkt-wallet-empty strong{color:#334155}.rkt-wallet-note{color:#475569;line-height:1.65;margin-bottom:0}`}</style>
+ </div>;
+}
+
 function PendingPlayerModule({title,description}:{title:string;description:string}){
  return <div style={navCard}><h2 style={{marginTop:0}}>{title}</h2><p style={{color:'#64748b'}}>{description}</p><span style={{fontSize:12,color:'#9a3412',fontWeight:700}}>PENDIENTE DE DESARROLLO · No disponible todavía</span></div>;
 }
@@ -402,7 +419,7 @@ function PlayerNavigation112({user,opponent,onClearOpponent,onChallenge}:{user:U
   area==='Clasificaciones'&&sub==='Historial'?<div style={navCard}><h2>Historial y evolución del rating · Tenis</h2><TennisRatingHistory userId={user.id}/><p style={{fontSize:13,color:'#64748b'}}>Las estadísticas históricas de pádel y pickleball se incorporarán cuando haya resultados competitivos disponibles.</p></div>:
   area==='Inicio'&&sub==='Mis datos'?<div className="rkt-personal-section">
     <div className="rkt-personal-tabs">{([{name:'Datos personales',icon:UserRound},{name:'Privacidad',icon:ShieldCheck},{name:'Configuración',icon:UserPen},{name:'Mi monedero',icon:Wallet}] as {name:string;icon:LucideIcon}[]).map(item=>{const I=item.icon;return <button key={item.name} className={dataTab===item.name?'active':''} type="button" onClick={()=>setDataTab(item.name)}><I size={17}/>{item.name}</button>})}</div>
-    {dataTab==='Datos personales'?<PlayerProfile user={user} mode="personal"/>:dataTab==='Privacidad'?<PlayerProfile user={user} mode="privacy"/>:dataTab==='Configuración'?<PlayerAccountSettings119 user={user}/>:<PendingPlayerModule title={dataTab} description={planned[dataTab]||'Esta sección se desarrollará próximamente.'}/>}
+    {dataTab==='Datos personales'?<PlayerProfile user={user} mode="personal"/>:dataTab==='Privacidad'?<PlayerProfile user={user} mode="privacy"/>:dataTab==='Configuración'?<PlayerAccountSettings119 user={user}/>:dataTab==='Mi monedero'?<PlayerWallet120/>:<PendingPlayerModule title={dataTab} description={planned[dataTab]||'Esta sección se desarrollará próximamente.'}/>}
   </div>:
   <PendingPlayerModule title={sub} description={planned[sub]||'Este módulo se implementará de forma independiente, manteniendo la navegación aprobada.'}/>}
   </div></div>
