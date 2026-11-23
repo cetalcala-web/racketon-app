@@ -697,49 +697,64 @@ const emptyCompetition131:ClubCompetitionForm131={
 
 type CompetitionEvent133={is_active:boolean;id:string;competition_id:string;category:string;discipline:string;capacity:number|null;status:string;starts_on:string|null;registration_closes_on:string|null;notes:string|null};
 const eventStatuses133=[['draft','Borrador'],['registration_open','Inscripción abierta'],['registration_closed','Inscripción cerrada'],['draw_published','Cuadro publicado'],['in_progress','En juego'],['completed','Finalizada'],['cancelled','Cancelada']];
+type EventSummary137={event_id:string;confirmed_count:number;pending_count:number};
 function CompetitionEventsManager133({competitionId}:{competitionId:string}){
  const [events,setEvents]=useState<CompetitionEvent133[]>([]);
- const [error,setError]=useState('');
- const [loading,setLoading]=useState(true);
+ const [summary,setSummary]=useState<EventSummary137[]>([]);
+ const [error,setError]=useState('');const [loading,setLoading]=useState(true);
  const [saving,setSaving]=useState<string|null>(null);
  const [showInactive,setShowInactive]=useState(false);
- const [showEntries,setShowEntries]=useState<Record<string,boolean>>({});
- const load=async()=>{
+ const [category,setCategory]=useState('Todas');
+ const [detail,setDetail]=useState<string|null>(null);
+ const [editing,setEditing]=useState<string|null>(null);
+ const refresh=async()=>{
   if(!supabase)return;
-  const {data,error:e}=await supabase.from('racketon_competition_events').select('id,competition_id,category,discipline,capacity,status,starts_on,registration_closes_on,notes,is_active').eq('competition_id',competitionId).order('category').order('discipline');
-  setLoading(false);if(e){setError(e.message);return;}setEvents((data||[]) as CompetitionEvent133[]);
+  const [a,b]=await Promise.all([
+   supabase.from('racketon_competition_events').select('id,competition_id,category,discipline,capacity,status,starts_on,registration_closes_on,notes,is_active').eq('competition_id',competitionId).order('category').order('discipline'),
+   supabase.rpc('racketon_organizer_event_summary_137',{p_competition_id:competitionId})
+  ]);
+  setLoading(false);
+  if(a.error){setError(a.error.message);return;}
+  setEvents((a.data||[]) as CompetitionEvent133[]);
+  if(b.error)setError('No se pudieron consultar los contadores: '+b.error.message+' (ejecuta SQL 0048)');
+  else {setSummary((b.data||[]) as EventSummary137[]);setError('');}
  };
- useEffect(()=>{void load()},[competitionId]);
- const patch=(id:string,values:Partial<CompetitionEvent133>)=>setEvents(a=>a.map(x=>x.id===id?{...x,...values}:x));
+ useEffect(()=>{void refresh()},[competitionId]);
+ const patch=(id:string,v:Partial<CompetitionEvent133>)=>setEvents(a=>a.map(x=>x.id===id?{...x,...v}:x));
  const save=async(x:CompetitionEvent133)=>{
-  if(!supabase)return;setSaving(x.id);setError('');
+  if(!supabase)return;setSaving(x.id);
   const {error:e}=await supabase.from('racketon_competition_events').update({capacity:x.capacity,status:x.status,starts_on:x.starts_on,registration_closes_on:x.registration_closes_on,notes:x.notes}).eq('id',x.id).eq('competition_id',competitionId);
-  setSaving(null);if(e)setError(e.message);
+  setSaving(null);if(e)setError(e.message);else{setEditing(null);await refresh();}
  };
- const setActive=async(x:CompetitionEvent133,active:boolean)=>{
+ const toggleActive=async(x:CompetitionEvent133)=>{
   if(!supabase)return;
-  if(!active&&!window.confirm('¿Retirar esta prueba? Se conservará en la base de datos y podrás reactivarla.'))return;
-  setSaving(x.id);setError('');
-  const {error:e}=await supabase.from('racketon_competition_events').update({is_active:active}).eq('id',x.id).eq('competition_id',competitionId);
-  setSaving(null);if(e)setError(e.message);else await load();
+  if(x.is_active&&!window.confirm('¿Retirar esta prueba? No se borrarán sus inscripciones.'))return;
+  setSaving(x.id);
+  const {error:e}=await supabase.from('racketon_competition_events').update({is_active:!x.is_active}).eq('id',x.id).eq('competition_id',competitionId);
+  setSaving(null);if(e)setError(e.message);else await refresh();
  };
- const activeEvents=events.filter(x=>x.is_active);
- const shownEvents=events.filter(x=>x.is_active||showInactive);
- return <div style={{display:'grid',gap:10,marginTop:12}}>
- <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,flexWrap:'wrap'}}><strong>{activeEvents.length} pruebas activas · {events.length-activeEvents.length} retiradas</strong><button type="button" onClick={()=>setShowInactive(v=>!v)}>{showInactive?'Ocultar retiradas':'Ver retiradas'}</button></div>
- {error&&<p style={{color:'#b91c1c',fontSize:12}}>No se pudieron gestionar las pruebas: {error}. Comprueba el SQL 0044.</p>}
- {loading?<p>Cargando pruebas…</p>:events.length===0?<p style={{fontSize:13,color:'#64748b'}}>No hay pruebas. Edita el torneo y selecciona categorías y modalidades.</p>:shownEvents.map(x=><div key={x.id} style={{border:'1px solid #e2e8f0',borderRadius:12,padding:14,background:'#f8fafc',display:'grid',gap:10}}>
- <strong style={{fontSize:14}}>{x.category} · {x.discipline} {!x.is_active?'(retirada)':''}</strong>
- <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(140px,1fr))',gap:10}}>
- <label style={{fontSize:12}}>Estado<select style={{display:'block',width:'100%',padding:8}} value={x.status} onChange={e=>patch(x.id,{status:e.target.value})}>{eventStatuses133.map(([v,t])=><option value={v} key={v}>{t}</option>)}</select></label>
- <label style={{fontSize:12}}>Plazas<input style={{display:'block',width:'100%',padding:8}} type="number" min={1} value={x.capacity??''} onChange={e=>patch(x.id,{capacity:e.target.value?Number(e.target.value):null})}/></label>
- <label style={{fontSize:12}}>Fecha de prueba<input style={{display:'block',width:'100%',padding:8}} type="date" value={x.starts_on||''} onChange={e=>patch(x.id,{starts_on:e.target.value||null})}/></label>
- <label style={{fontSize:12}}>Cierre inscripción<input style={{display:'block',width:'100%',padding:8}} type="date" value={x.registration_closes_on||''} onChange={e=>patch(x.id,{registration_closes_on:e.target.value||null})}/></label>
- </div><label style={{fontSize:12}}>Observaciones<input style={{display:'block',width:'100%',padding:8}} value={x.notes||''} onChange={e=>patch(x.id,{notes:e.target.value})}/></label>
- <div><button type="button" onClick={()=>setShowEntries(v=>({...v,[x.id]:!v[x.id]}))}>{showEntries[x.id]?'Ocultar inscritos':'Ver inscritos'}</button></div>
- {showEntries[x.id]&&<ClubEntries136 eventId={x.id}/>}
- <div><button type="button" onClick={()=>void save(x)} disabled={saving===x.id}>{saving===x.id?'Guardando…':'Guardar esta prueba'}</button> <button type="button" disabled={saving===x.id} onClick={()=>void setActive(x,!x.is_active)}>{x.is_active?'Retirar prueba':'Reactivar prueba'}</button></div>
- </div>)}
+ const categories=['Todas',...Array.from(new Set(events.map(x=>x.category)))];
+ const visible=events.filter(x=>(x.is_active||showInactive)&&(category==='Todas'||x.category===category));
+ const counts=(id:string)=>summary.find(x=>x.event_id===id)||{confirmed_count:0,pending_count:0};
+ const active=events.filter(x=>x.is_active);
+ const enrolled=active.reduce((n,x)=>n+Number(counts(x.id).confirmed_count),0);
+ const pending=active.reduce((n,x)=>n+Number(counts(x.id).pending_count),0);
+ const capacity=active.reduce((n,x)=>n+(x.capacity||0),0);
+ const statusName=(status:string)=>eventStatuses133.find(([v])=>v===status)?.[1]||status;
+ return <div className="rkt137">
+ <style>{`.rkt137{display:grid;gap:16px;margin-top:16px}.rkt137 *{box-sizing:border-box}.rkt137-summary{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.rkt137-metric{padding:17px;border:1px solid #e7eaf0;background:#fff;border-radius:13px}.rkt137-metric strong{display:block;font-size:25px;color:#bd1234}.rkt137-metric span{font-size:11px;color:#667085;font-weight:750}.rkt137-toolbar{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:12px}.rkt137-tabs{display:flex;gap:6px;flex-wrap:wrap}.rkt137 button{cursor:pointer;border-radius:9px;padding:9px 12px;background:white;border:1px solid #e2e6ed;font-weight:800;font-size:12px;color:#253247}.rkt137 button:disabled{opacity:.5}.rkt137 button.active,.rkt137 button.primary{background:#bd1234;color:#fff;border-color:#bd1234}.rkt137-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.rkt137-card{border:1px solid #e2e7ee;border-radius:15px;padding:18px;background:#fff;display:grid;gap:12px}.rkt137-head{display:flex;justify-content:space-between;gap:10px;align-items:flex-start}.rkt137-head h4{margin:0 0 5px;font-size:15px}.rkt137-head small{color:#667085;font-size:11px}.rkt137-pill{font-size:10px;font-weight:850;background:#f1f5f9;padding:6px 9px;border-radius:100px;white-space:nowrap}.rkt137-bar{height:8px;background:#eef0f4;border-radius:50px;overflow:hidden}.rkt137-bar span{display:block;background:#bd1234;height:100%;border-radius:50px}.rkt137-counts{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:#667085}.rkt137-counts strong{color:#182230}.rkt137-actions{display:flex;gap:8px;flex-wrap:wrap}.rkt137-edit{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:9px;padding:12px;background:#f8fafc;border-radius:10px}.rkt137-edit label{font-size:11px;color:#475467;display:grid;gap:4px}.rkt137-edit input,.rkt137-edit select{width:100%;padding:9px;border:1px solid #d6dce5;border-radius:8px;background:white}.rkt137-wide{grid-column:span 2}.rkt137-error{background:#fff1f2;color:#9f1239;padding:12px;border-radius:9px}@media(max-width:850px){.rkt137-summary{grid-template-columns:repeat(2,minmax(0,1fr))}.rkt137-grid{grid-template-columns:1fr}}`}</style>
+ <div className="rkt137-summary"><div className="rkt137-metric"><strong>{active.length}</strong><span>Pruebas activas</span></div><div className="rkt137-metric"><strong>{enrolled}</strong><span>Inscripciones confirmadas</span></div><div className="rkt137-metric"><strong>{pending}</strong><span>Parejas pendientes</span></div><div className="rkt137-metric"><strong>{capacity?Math.max(0,capacity-enrolled-pending):'—'}</strong><span>Plazas restantes (total)</span></div></div>
+ {error&&<div className="rkt137-error">{error}</div>}
+ <div className="rkt137-toolbar"><div className="rkt137-tabs">{categories.map(c=><button key={c} type="button" className={category===c?'active':''} onClick={()=>setCategory(c)}>{c}</button>)}</div><button type="button" onClick={()=>setShowInactive(x=>!x)}>{showInactive?'Ocultar retiradas':'Mostrar retiradas'}</button></div>
+ {loading?<p>Cargando pruebas y participantes…</p>:visible.length===0?<p>No hay pruebas con este filtro.</p>:<div className="rkt137-grid">{visible.map(x=>{
+  const c=counts(x.id);const occupied=Number(c.confirmed_count)+Number(c.pending_count);const cap=x.capacity||0;
+  return <article className="rkt137-card" key={x.id}><div className="rkt137-head"><div><h4>{x.discipline}</h4><small>{x.category} · {x.starts_on||'Fecha pendiente'}</small></div><span className="rkt137-pill">{!x.is_active?'Retirada':statusName(x.status)}</span></div>
+  <div className="rkt137-counts"><span><strong>{c.confirmed_count}</strong> inscritos</span><span>{c.pending_count>0?`${c.pending_count} pendientes · `:''}<strong>{cap?Math.max(0,cap-occupied):'—'}</strong> libres de {cap||'sin límite'}</span></div>
+  <div className="rkt137-bar"><span style={{width:cap?`${Math.min(100,occupied/cap*100)}%`:'0%'}}/></div>
+  <div className="rkt137-actions"><button className="primary" type="button" onClick={()=>setDetail(v=>v===x.id?null:x.id)}>{detail===x.id?'Ocultar participantes':'Ver participantes'}</button><button type="button" onClick={()=>setEditing(v=>v===x.id?null:x.id)}>{editing===x.id?'Cerrar edición':'Configurar'}</button></div>
+  {detail===x.id&&<ClubEntries137 eventId={x.id} onChanged={()=>void refresh()}/>}
+  {editing===x.id&&<div className="rkt137-edit"><label>Estado<select value={x.status} onChange={e=>patch(x.id,{status:e.target.value})}>{eventStatuses133.map(([v,t])=><option key={v} value={v}>{t}</option>)}</select></label><label>Plazas<input type="number" min={1} value={x.capacity??''} onChange={e=>patch(x.id,{capacity:e.target.value?Number(e.target.value):null})}/></label><label>Fecha de prueba<input type="date" value={x.starts_on||''} onChange={e=>patch(x.id,{starts_on:e.target.value||null})}/></label><label>Cierre de inscripción<input type="date" value={x.registration_closes_on||''} onChange={e=>patch(x.id,{registration_closes_on:e.target.value||null})}/></label><label className="rkt137-wide">Observaciones<input value={x.notes||''} onChange={e=>patch(x.id,{notes:e.target.value})}/></label><div className="rkt137-actions rkt137-wide"><button className="primary" disabled={saving===x.id} onClick={()=>void save(x)}>Guardar cambios</button><button disabled={saving===x.id} onClick={()=>void toggleActive(x)}>{x.is_active?'Retirar prueba':'Reactivar'}</button></div></div>}
+ </article>})}</div>}
  </div>;
 }
 
@@ -751,6 +766,7 @@ function ClubCompetitionManager131({userId}:{userId:string}){
  const [loading,setLoading]=useState(true);
  const [saving,setSaving]=useState(false);
  const [expandedCompetition,setExpandedCompetition]=useState<string|null>(null);
+ const [showCreateForm,setShowCreateForm]=useState(false);
  const [notice,setNotice]=useState('');
  const [isError,setIsError]=useState(false);
  const set=(k:keyof ClubCompetitionForm131,v:string)=>setForm(f=>({...f,[k]:v}));
@@ -769,6 +785,7 @@ function ClubCompetitionManager131({userId}:{userId:string}){
  };
  useEffect(()=>{void refresh()},[userId]);
  const edit=(x:RacketonCompetition130)=>{
+  setShowCreateForm(true);
   setEditing(x.id);setForm({title:x.title,sport:x.sport,format:x.format,city:x.city,region:x.region,
    venue_name:x.venue_name||'',starts_on:x.starts_on,ends_on:x.ends_on||'',
    registration_opens_on:x.registration_opens_on||'',registration_closes_on:x.registration_closes_on||'',
@@ -805,7 +822,7 @@ function ClubCompetitionManager131({userId}:{userId:string}){
   setSaving(false);
   if(result.error){setNotice('No se pudo guardar: '+result.error.message);setIsError(true);return;}
   setNotice(editing?'Competición actualizada.':'Borrador creado. Publícalo cuando esté listo.');
-  setIsError(false);setEditing(null);setForm(emptyCompetition131);setPosterFile(null);await refresh();
+  setIsError(false);setEditing(null);setForm(emptyCompetition131);setPosterFile(null);setShowCreateForm(false);await refresh();
  };
  const publish=async(x:RacketonCompetition130&{is_published:boolean})=>{
   if(!supabase)return;
@@ -820,7 +837,8 @@ function ClubCompetitionManager131({userId}:{userId:string}){
  return <section className="rkt-club131">
   <style>{`.rkt-club131{max-width:1150px;display:grid;gap:18px}.rkt-club131 *{box-sizing:border-box}.rkt-club131-hero{padding:26px;border-radius:18px;background:linear-gradient(115deg,#171b29,#82142f);color:white}.rkt-club131-hero h2{margin:5px 0 10px;font-size:28px}.rkt-club131-hero p{margin:0;color:#f0dbe1;line-height:1.6}.rkt-club131-panel{background:white;border:1px solid #e5e7eb;border-radius:16px;padding:22px}.rkt-club131-panel h3{margin:0 0 18px}.rkt-club131-grid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:14px}.rkt-club131-grid label{display:grid;gap:6px;color:#526074;font-size:12px;font-weight:800}.rkt-club131-grid input,.rkt-club131-grid select,.rkt-club131-grid textarea{border:1px solid #dce1e8;border-radius:9px;padding:12px;color:#172033;background:white;font-size:14px;min-width:0;width:100%}.rkt-club131-grid textarea{min-height:100px;resize:vertical}.rkt-club131-wide{grid-column:span 3}.rkt-club131-actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:18px}.rkt-club131 button{border:1px solid #dce1e8;background:white;padding:10px 14px;border-radius:9px;font-weight:800;cursor:pointer}.rkt-club131 button:disabled{opacity:.55;cursor:wait}.rkt-club131 button.rkt-club131-primary{background:#c8102e;color:white;border-color:#c8102e}.rkt-club131-list{display:grid;gap:10px}.rkt-club131-item{display:flex;align-items:center;justify-content:space-between;gap:16px;padding:15px;border:1px solid #e5e7eb;border-radius:12px;flex-wrap:wrap}.rkt-club131-item strong{display:block;font-size:15px}.rkt-club131-item small{color:#667085;display:block;margin-top:5px}.rkt-club131-note{padding:12px;border-radius:9px;background:#f1f5f9;color:#475569;font-size:13px;line-height:1.5}.rkt-club131-alert{padding:12px;border-radius:9px;background:#f0fdf4;color:#166534}.rkt-club131-alert.error{background:#fff1f2;color:#9f1239}@media(max-width:750px){.rkt-club131-grid{grid-template-columns:repeat(2,minmax(0,1fr))}.rkt-club131-wide{grid-column:span 2}}@media(max-width:470px){.rkt-club131-grid{grid-template-columns:1fr}.rkt-club131-wide{grid-column:span 1}}`}</style>
   <header className="rkt-club131-hero"><small>RACKETON · ESPACIO CLUB</small><h2>Gestión de competiciones</h2><p>Crea torneos y ligas, completa sus datos y publícalos en el catálogo de jugadores cuando estén preparados.</p></header>
-  <div className="rkt-club131-panel"><h3>{editing?'Editar competición':'Crear nueva competición'}</h3><form onSubmit={save}><div className="rkt-club131-grid">
+  <div className="rkt-club131-actions"><button type="button" className="rkt-club131-primary" onClick={()=>{setEditing(null);setForm(emptyCompetition131);setShowCreateForm(v=>!v)}}>{showCreateForm?"Cerrar formulario":"+ Crear competición"}</button></div>
+  {showCreateForm&&<div className="rkt-club131-panel"><h3>{editing?'Editar competición':'Crear nueva competición'}</h3><form onSubmit={save}><div className="rkt-club131-grid">
   <label className="rkt-club131-wide">Nombre de la competición<input required minLength={3} value={form.title} onChange={e=>set('title',e.target.value)} placeholder="Nombre oficial"/></label>
   <label>Deporte<select value={form.sport} onChange={e=>set('sport',e.target.value)}>{['Tenis','Pádel','Pickleball','Squash','Bádminton'].map(x=><option key={x}>{x}</option>)}</select></label>
   <label>Modalidad<select value={form.format} onChange={e=>set('format',e.target.value)}>{['Individual','Dobles','Mixto','Equipos','Liga','Round Robin'].map(x=><option key={x}>{x}</option>)}</select></label>
@@ -840,7 +858,7 @@ function ClubCompetitionManager131({userId}:{userId:string}){
   <label>Nivel máximo<input value={form.level_max} onChange={e=>set('level_max',e.target.value)} placeholder="Opcional"/></label>
   <label className="rkt-club131-wide">Descripción y condiciones<textarea value={form.description} onChange={e=>set('description',e.target.value)}/></label>
   <label className="rkt-club131-wide">Enlace HTTPS al reglamento<input type="url" value={form.rules_url} onChange={e=>set('rules_url',e.target.value)} placeholder="https://..."/></label>
-  </div><div className="rkt-club131-actions"><button className="rkt-club131-primary" type="submit" disabled={saving}>{saving?'Guardando…':editing?'Guardar cambios':'Guardar borrador'}</button>{editing&&<button type="button" onClick={()=>{setEditing(null);setForm(emptyCompetition131);setPosterFile(null)}}>Cancelar edición</button>}</div></form></div>
+  </div><div className="rkt-club131-actions"><button className="rkt-club131-primary" type="submit" disabled={saving}>{saving?'Guardando…':editing?'Guardar cambios':'Guardar borrador'}</button>{editing&&<button type="button" onClick={()=>{setEditing(null);setForm(emptyCompetition131);setPosterFile(null)}}>Cancelar edición</button>}</div></form></div>}
   {notice&&<div role="status" className={'rkt-club131-alert'+(isError?' error':'')}>{notice}</div>}
   <div className="rkt-club131-panel"><h3>Mis competiciones</h3><div className="rkt-club131-note">Solo puedes editar las competiciones creadas con tu cuenta autorizada de club. Publicar las hará visibles para todos los jugadores. Las inscripciones se gestionan desde cada prueba.</div><div className="rkt-club131-list" style={{marginTop:14}}>{loading?'Cargando competiciones…':items.length===0?'Todavía no has creado competiciones.':items.map(x=><div className="rkt-club131-item" key={x.id}><div><strong>{x.title}</strong><small>{x.sport} · {x.city} · {x.starts_on} · {x.is_published?'🟢 Publicada':'⚪ Borrador'}</small></div><div className="rkt-club131-actions"><button type="button" onClick={()=>setExpandedCompetition(v=>v===x.id?null:x.id)}>{expandedCompetition===x.id?"Ocultar pruebas":"Gestionar pruebas"}</button><button type="button" onClick={()=>edit(x)}>Editar</button><button type="button" className={x.is_published?'':'rkt-club131-primary'} onClick={()=>void publish(x)}>{x.is_published?'Retirar':'Publicar'}</button></div>{expandedCompetition===x.id&&<div style={{flexBasis:"100%",width:"100%"}}><CompetitionEventsManager133 competitionId={x.id}/></div>}</div>)}</div></div>
  </section>;
@@ -905,32 +923,28 @@ function PlayerCompetitions136({userId}:{userId:string}){
  return <article className="rkt136-item" key={x.id}><div><span className="rkt136-pill">{x.status==='confirmed'?'✓ Confirmada':x.status==='pending_partner'?'⏳ Pendiente de pareja':'Cancelada'}</span></div><h3>{c?.title||'Competición'}</h3><strong>{ev?`${ev.category} · ${ev.discipline}`:'Prueba'}</strong><small>{c?.city||''} · {ev?.starts_on||c?.starts_on||'Fecha pendiente'}</small><small>{x.partner_id?'Modalidad de dobles':'Modalidad individual'}</small><div className="rkt136-actions">{partnerInvite&&<><button className="primary" disabled={busy===x.id} onClick={()=>void reply(x,true)}>Aceptar pareja</button><button disabled={busy===x.id} onClick={()=>void reply(x,false)}>Rechazar</button></>}{x.status!=='cancelled'&&x.player_id===userId&&<button disabled={busy===x.id} onClick={()=>void cancel(x)}>Cancelar inscripción</button>}</div></article>})}</div>}
  </div>;
 }
-function ClubEntries136({eventId}:{eventId:string}){
- const [entries,setEntries]=useState<EventEntry136[]>([]);
- const [error,setError]=useState('');
- const [loading,setLoading]=useState(true);
+type ClubEntry137={id:string;event_id:string;player_id:string;partner_id:string|null;status:string;created_at:string;player_name:string|null;player_photo:string|null;partner_name:string|null;partner_photo:string|null};
+function ClubEntries137({eventId,onChanged}:{eventId:string;onChanged:()=>void}){
+ const [entries,setEntries]=useState<ClubEntry137[]>([]);
+ const [error,setError]=useState('');const [loading,setLoading]=useState(true);
  const [busy,setBusy]=useState<string|null>(null);
  const load=async()=>{
   if(!supabase)return;
-  const {data,error:e}=await supabase.rpc('racketon_organizer_entries_136',{p_event_id:eventId});
-  setLoading(false);if(e){setError(e.message);return;}
-  setEntries((data||[]) as EventEntry136[]);
+  const {data,error:e}=await supabase.rpc('racketon_organizer_entries_137',{p_event_id:eventId});
+  setLoading(false);if(e){setError(e.message);return;}setEntries((data||[]) as ClubEntry137[]);setError('');
  };
  useEffect(()=>{void load()},[eventId]);
- const cancel=async(x:EventEntry136)=>{
+ const cancel=async(x:ClubEntry137)=>{
   if(!supabase||!window.confirm('¿Dar de baja esta inscripción?'))return;
   setBusy(x.id);
   const {error:e}=await supabase.rpc('racketon_organizer_cancel_entry_136',{p_entry_id:x.id});
-  setBusy(null);if(e){setError(e.message);return;}await load();
+  setBusy(null);if(e){setError(e.message);return;}await load();onChanged();
  };
- return <div style={{background:'#fff',border:'1px solid #e4e7ec',padding:14,borderRadius:12,display:'grid',gap:10}}>
-  <div style={{display:'flex',justifyContent:'space-between',gap:10,alignItems:'center',flexWrap:'wrap'}}><strong>Inscripciones · {entries.filter(x=>x.status!=='cancelled').length} activas</strong><button type="button" onClick={()=>void load()}>Actualizar</button></div>
-  {error&&<p style={{color:'#b91c1c'}}>No se pudieron consultar los inscritos: {error}</p>}
-  {loading?<span>Cargando participantes…</span>:entries.length===0?<span style={{fontSize:12,color:'#667085'}}>Todavía no hay inscritos.</span>:entries.map(x=><div key={x.id} style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,borderTop:'1px solid #e4e7ec',paddingTop:9,flexWrap:'wrap'}}>
-  <div><strong style={{fontSize:12}}>Jugador {x.player_id.slice(0,8)}{x.partner_id?' + pareja '+x.partner_id.slice(0,8):''}</strong><div style={{fontSize:11,color:'#667085'}}>{x.status==='confirmed'?'Confirmada':x.status==='pending_partner'?'Pendiente de pareja':'Cancelada'} · {new Date(x.created_at).toLocaleDateString('es-ES')}</div></div>
-  {x.status!=='cancelled'&&<button type="button" disabled={busy===x.id} onClick={()=>void cancel(x)}>Dar de baja</button>}
-  </div>)}
-  <small style={{color:'#667085'}}>La identificación por nombre y el rating se incorporarán cuando conectemos el directorio público de jugadores con controles de privacidad.</small>
+ return <div style={{borderTop:'1px solid #e5e7eb',paddingTop:12,display:'grid',gap:11}}>
+  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8}}><strong style={{fontSize:13}}>Participantes · {entries.filter(x=>x.status!=='cancelled').length}</strong><button type="button" onClick={()=>void load()}>Actualizar</button></div>
+  {error&&<div style={{color:'#b91c1c',fontSize:12}}>{error}. Comprueba SQL 0048.</div>}
+  {loading?<small>Cargando participantes…</small>:entries.length===0?<small style={{color:'#667085'}}>Todavía no hay inscritos.</small>:entries.map(x=><div key={x.id} style={{display:'flex',gap:10,alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',padding:'10px 0',borderTop:'1px solid #f0f1f3'}}><div style={{display:'flex',alignItems:'center',gap:9}}>{x.player_photo?<img src={x.player_photo} alt="" style={{width:36,height:36,borderRadius:'50%',objectFit:'cover'}}/>:<div style={{width:36,height:36,borderRadius:'50%',background:'#f2dce3',display:'grid',placeItems:'center',color:'#9f1239',fontWeight:900}}>{(x.player_name||'J')[0]}</div>}<div><strong style={{display:'block',fontSize:12}}>{x.player_name||'Jugador sin nombre público'}{x.partner_id?' + '+(x.partner_name||'Pareja sin nombre público'):''}</strong><small style={{color:'#667085'}}>{x.status==='confirmed'?'Confirmada':x.status==='pending_partner'?'Pendiente de pareja':'Cancelada'} · {new Date(x.created_at).toLocaleDateString('es-ES')}</small></div></div>{x.status!=='cancelled'&&<button type="button" disabled={busy===x.id} onClick={()=>void cancel(x)}>Dar de baja</button>}</div>)}
+  <small style={{color:'#667085'}}>Se muestran los nombres y fotografías de perfil disponibles para la gestión de esta prueba. No se exponen correos ni teléfonos.</small>
  </div>;
 }
 
