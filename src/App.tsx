@@ -442,7 +442,7 @@ function TrainingPlanner122({userId}:{userId:string}){
  </div>
 }
 
-type AgendaEvent121={id:string;date:string;title:string;category:'Desafíos'|'Competiciones'|'Reservas';subtitle:string;status:string;venue:string};
+type AgendaEvent121={id:string;date:string;title:string;category:'Desafíos'|'Competiciones'|'Reservas'|'Entrenamientos';subtitle:string;status:string;venue:string};
 function trainingDate126(date:Date){return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,'0')}-${String(date.getDate()).padStart(2,'0')}`}
 function trainingMonday126(date:Date){const d=new Date(date.getFullYear(),date.getMonth(),date.getDate());d.setDate(d.getDate()-(d.getDay()+6)%7);return d}
 function PlayerAgenda121({userId}:{userId:string}){
