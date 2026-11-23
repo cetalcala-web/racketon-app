@@ -5,8 +5,6 @@ import { Home, Trophy, CalendarDays, Users, UserRound, LogIn, LogOut, Menu, X, C
 import type { LucideIcon } from 'lucide-react';
 import type { User } from '@supabase/supabase-js';
 import { configured, supabase } from './supabase';
-import LevelAssessment from './LevelAssessmentAdvanced';
-import RacketSportAssessment105 from './RacketSportAssessment105';
 import PlayerSearch from './PlayerSearch';
 import { CountrySelect } from './CountrySelect';
 import TennisChallenges from './TennisChallenges';
@@ -58,7 +56,6 @@ type PlayerDetails = {
 const defaultSports = (): SportsState => Object.fromEntries(sportNames.map(name => [name, {enabled:false, level:'Sin evaluar'}])) as SportsState;
 const emptyDetails = (): PlayerDetails => ({display_name:'', city:'', birth_year:'', preferred_format:'Individual y dobles', availability:'', sports:defaultSports()});
 const fieldStyle: React.CSSProperties = {display:'block',width:'100%',boxSizing:'border-box',padding:'12px',border:'1px solid #d8d8dc',borderRadius:9,marginTop:6,background:'#fff',color:'#202027',fontSize:15};
-const labelStyle: React.CSSProperties = {display:'block',fontWeight:600,fontSize:14,color:'#303039'};
 
 function PlayerProfile({user,mode='personal'}:{user:User;mode?:'personal'|'privacy'}) {
   const [details,setDetails] = useState<PlayerDetails>(emptyDetails);
@@ -123,7 +120,6 @@ function PlayerProfile({user,mode='personal'}:{user:User;mode?:'personal'|'priva
     setPhotoUrl('');setMessage('Fotografía eliminada del perfil.');setPhotoBusy(false);
   }
   function change<K extends Exclude<keyof PlayerDetails,'sports'>>(key:K,value:PlayerDetails[K]){setDetails(old=>({...old,[key]:value}));setMessage('')}
-  function changeSport(name:SportName,update:Partial<SportChoice>){setDetails(old=>({...old,sports:{...old.sports,[name]:{...old.sports[name],...update}}}));setMessage('')}
   async function save(e:React.FormEvent){
     e.preventDefault();if(!supabase)return;
     const year=details.birth_year.trim()?Number(details.birth_year):null;
