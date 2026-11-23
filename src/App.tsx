@@ -923,14 +923,16 @@ function PlayerCompetitions136({userId}:{userId:string}){
  return <article className="rkt136-item" key={x.id}><div><span className="rkt136-pill">{x.status==='confirmed'?'✓ Confirmada':x.status==='pending_partner'?'⏳ Pendiente de pareja':'Cancelada'}</span></div><h3>{c?.title||'Competición'}</h3><strong>{ev?`${ev.category} · ${ev.discipline}`:'Prueba'}</strong><small>{c?.city||''} · {ev?.starts_on||c?.starts_on||'Fecha pendiente'}</small><small>{x.partner_id?'Modalidad de dobles':'Modalidad individual'}</small><div className="rkt136-actions">{partnerInvite&&<><button className="primary" disabled={busy===x.id} onClick={()=>void reply(x,true)}>Aceptar pareja</button><button disabled={busy===x.id} onClick={()=>void reply(x,false)}>Rechazar</button></>}{x.status!=='cancelled'&&x.player_id===userId&&<button disabled={busy===x.id} onClick={()=>void cancel(x)}>Cancelar inscripción</button>}</div></article>})}</div>}
  </div>;
 }
-type ClubEntry137={id:string;event_id:string;player_id:string;partner_id:string|null;status:string;created_at:string;player_name:string|null;player_photo:string|null;partner_name:string|null;partner_photo:string|null};
+type ClubEntry137={id:string;event_id:string;player_id:string;partner_id:string|null;status:string;created_at:string;player_name:string|null;player_photo:string|null;partner_name:string|null;partner_photo:string|null;player_rating:number|null;partner_rating:number|null};
 function ClubEntries137({eventId,onChanged}:{eventId:string;onChanged:()=>void}){
  const [entries,setEntries]=useState<ClubEntry137[]>([]);
  const [error,setError]=useState('');const [loading,setLoading]=useState(true);
  const [busy,setBusy]=useState<string|null>(null);
+ const [search,setSearch]=useState('');
+ const [sort,setSort]=useState('name');
  const load=async()=>{
   if(!supabase)return;
-  const {data,error:e}=await supabase.rpc('racketon_organizer_entries_137',{p_event_id:eventId});
+  const {data,error:e}=await supabase.rpc('racketon_organizer_entries_138',{p_event_id:eventId});
   setLoading(false);if(e){setError(e.message);return;}setEntries((data||[]) as ClubEntry137[]);setError('');
  };
  useEffect(()=>{void load()},[eventId]);
@@ -940,11 +942,23 @@ function ClubEntries137({eventId,onChanged}:{eventId:string;onChanged:()=>void})
   const {error:e}=await supabase.rpc('racketon_organizer_cancel_entry_136',{p_entry_id:x.id});
   setBusy(null);if(e){setError(e.message);return;}await load();onChanged();
  };
+ const visible=entries.filter(x=>[x.player_name,x.partner_name,x.status].some(v=>String(v||'').toLocaleLowerCase('es').includes(search.toLocaleLowerCase('es')))).sort((a,b)=>sort==='rating'?(Number(b.player_rating??-1)-Number(a.player_rating??-1)):sort==='recent'?b.created_at.localeCompare(a.created_at):(a.player_name||'').localeCompare(b.player_name||'','es'));
+ const exportCsv=()=>{
+  const cell=(v:unknown)=>'"'+String(v??'').replace(/"/g,'""')+'"';
+  const lines=[['Jugador','Rating tenis','Pareja','Rating pareja','Estado','Fecha'].map(cell).join(';'),...visible.map(x=>[x.player_name||'',x.player_rating??'',x.partner_name||'',x.partner_rating??'',x.status,new Date(x.created_at).toLocaleDateString('es-ES')].map(cell).join(';'))];
+  const blob=new Blob(['\uFEFF'+lines.join('\r\n')],{type:'text/csv;charset=utf-8'});
+  const url=URL.createObjectURL(blob);const link=document.createElement('a');link.href=url;link.download='racketon_inscritos_'+eventId.slice(0,8)+'.csv';link.click();URL.revokeObjectURL(url);
+ };
  return <div style={{borderTop:'1px solid #e5e7eb',paddingTop:12,display:'grid',gap:11}}>
   <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:8}}><strong style={{fontSize:13}}>Participantes · {entries.filter(x=>x.status!=='cancelled').length}</strong><button type="button" onClick={()=>void load()}>Actualizar</button></div>
-  {error&&<div style={{color:'#b91c1c',fontSize:12}}>{error}. Comprueba SQL 0048.</div>}
-  {loading?<small>Cargando participantes…</small>:entries.length===0?<small style={{color:'#667085'}}>Todavía no hay inscritos.</small>:entries.map(x=><div key={x.id} style={{display:'flex',gap:10,alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',padding:'10px 0',borderTop:'1px solid #f0f1f3'}}><div style={{display:'flex',alignItems:'center',gap:9}}>{x.player_photo?<img src={x.player_photo} alt="" style={{width:36,height:36,borderRadius:'50%',objectFit:'cover'}}/>:<div style={{width:36,height:36,borderRadius:'50%',background:'#f2dce3',display:'grid',placeItems:'center',color:'#9f1239',fontWeight:900}}>{(x.player_name||'J')[0]}</div>}<div><strong style={{display:'block',fontSize:12}}>{x.player_name||'Jugador sin nombre público'}{x.partner_id?' + '+(x.partner_name||'Pareja sin nombre público'):''}</strong><small style={{color:'#667085'}}>{x.status==='confirmed'?'Confirmada':x.status==='pending_partner'?'Pendiente de pareja':'Cancelada'} · {new Date(x.created_at).toLocaleDateString('es-ES')}</small></div></div>{x.status!=='cancelled'&&<button type="button" disabled={busy===x.id} onClick={()=>void cancel(x)}>Dar de baja</button>}</div>)}
-  <small style={{color:'#667085'}}>Se muestran los nombres y fotografías de perfil disponibles para la gestión de esta prueba. No se exponen correos ni teléfonos.</small>
+  <div style={{display:'flex',gap:8,flexWrap:'wrap',alignItems:'center'}}>
+   <input aria-label="Buscar participante" placeholder="Buscar jugador o pareja…" value={search} onChange={e=>setSearch(e.target.value)} style={{minWidth:165,flex:1,border:'1px solid #dce1e8',borderRadius:8,padding:'10px 11px',fontSize:12}}/>
+   <select aria-label="Ordenar participantes" value={sort} onChange={e=>setSort(e.target.value)} style={{border:'1px solid #dce1e8',borderRadius:8,padding:10,fontSize:12}}><option value="name">Nombre A–Z</option><option value="rating">Rating mayor primero</option><option value="recent">Más recientes</option></select>
+   <button type="button" onClick={exportCsv} disabled={!visible.length}>Exportar CSV</button>
+  </div>
+  {error&&<div style={{color:'#b91c1c',fontSize:12}}>{error}. Comprueba SQL 0049.</div>}
+  {loading?<small>Cargando participantes…</small>:entries.length===0?<small style={{color:'#667085'}}>Todavía no hay inscritos.</small>:visible.map(x=><div key={x.id} style={{display:'flex',gap:10,alignItems:'center',justifyContent:'space-between',flexWrap:'wrap',padding:'10px 0',borderTop:'1px solid #f0f1f3'}}><div style={{display:'flex',alignItems:'center',gap:9}}>{x.player_photo?<img src={x.player_photo} alt="" style={{width:36,height:36,borderRadius:'50%',objectFit:'cover'}}/>:<div style={{width:36,height:36,borderRadius:'50%',background:'#f2dce3',display:'grid',placeItems:'center',color:'#9f1239',fontWeight:900}}>{(x.player_name||'J')[0]}</div>}<div><strong style={{display:'block',fontSize:12}}>{x.player_name||'Jugador sin nombre público'}{x.player_rating!=null?' · Rating '+Number(x.player_rating).toFixed(2):''}{x.partner_id?' + '+(x.partner_name||'Pareja sin nombre público')+(x.partner_rating!=null?' · Rating '+Number(x.partner_rating).toFixed(2):''):''}</strong><small style={{color:'#667085'}}>{x.status==='confirmed'?'Confirmada':x.status==='pending_partner'?'Pendiente de pareja':'Cancelada'} · {new Date(x.created_at).toLocaleDateString('es-ES')}</small></div></div>{x.status!=='cancelled'&&<button type="button" disabled={busy===x.id} onClick={()=>void cancel(x)}>Dar de baja</button>}</div>)}
+  <small style={{color:'#667085'}}>Los ratings corresponden al deporte de la competición. La exportación contiene solo los participantes visibles según el filtro; no incluye correos ni teléfonos.</small>
  </div>;
 }
 
