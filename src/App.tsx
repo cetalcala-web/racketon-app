@@ -539,7 +539,7 @@ function PlayerNotices128({userId,onNavigate}:{userId:string;onNavigate:(area:Pl
  useEffect(()=>{let active=true;async function load(){if(!supabase)return;
   setLoading(true);setError('');
   const [challenges,settings,done,read]=await Promise.all([
-   supabase.from('tennis_challenges').select('id,status,created_at,scheduled_at,challenger_id,challenged_id').or(`challenger_id.eq.${userId},challenged_id.eq.${userId}`).order('created_at',{ascending:false}).limit(80),
+   supabase.from('tennis_challenges').select('id,status,created_at,challenger_id,challenged_id').or(`challenger_id.eq.${userId},challenged_id.eq.${userId}`).order('created_at',{ascending:false}).limit(80),
    supabase.from('player_training_settings').select('start_date,weekdays,sport,duration').eq('user_id',userId).maybeSingle(),
    supabase.from('player_training_sessions').select('session_date').eq('user_id',userId).limit(1000),
    supabase.from('player_notice_reads').select('notice_id').eq('user_id',userId).limit(1000)
@@ -552,7 +552,7 @@ function PlayerNotices128({userId,onNavigate}:{userId:string;onNavigate:(area:Pl
    const status=String(c.status||'').toLowerCase();const incoming=c.challenged_id===userId;
    if(status==='pending'||status==='proposed'||status==='accepted'||status==='confirmed'){
     const isPending=status==='pending'||status==='proposed';
-    list.push({id:'challenge-'+c.id,kind:'challenge',title:isPending?(incoming?'Tienes un desafío pendiente':'Desafío enviado pendiente de respuesta'):'Desafío confirmado',detail:isPending?(incoming?'Revisa la invitación y responde desde Competir → Desafíos.':'Puedes consultar el estado de tu propuesta en Desafíos.'):'Consulta los detalles y la fecha del partido en Desafíos.',date:String(c.scheduled_at||c.created_at||''),action:'Desafíos',urgent:isPending&&incoming});
+    list.push({id:'challenge-'+c.id,kind:'challenge',title:isPending?(incoming?'Tienes un desafío pendiente':'Desafío enviado pendiente de respuesta'):'Desafío confirmado',detail:isPending?(incoming?'Revisa la invitación y responde desde Competir → Desafíos.':'Puedes consultar el estado de tu propuesta en Desafíos.'):'Consulta los detalles y la fecha del partido en Desafíos.',date:String(c.created_at||''),action:'Desafíos',urgent:isPending&&incoming});
    }
   }
   if(settings.data?.start_date&&Array.isArray(settings.data.weekdays)){
