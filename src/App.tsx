@@ -588,7 +588,7 @@ type RacketonCompetition130={
  venue_name:string|null;starts_on:string;ends_on:string|null;
  registration_opens_on:string|null;registration_closes_on:string|null;
  capacity:number|null;level_min:string|null;level_max:string|null;
- description:string|null;rules_url:string|null;status:string;
+ description:string|null;rules_url:string|null;status:string;poster_url:string|null;categories:string[]|null;events:string[]|null;category_system:string|null;
 };
 function CompetitionExplorer130(){
  const [items,setItems]=useState<RacketonCompetition130[]>([]);
@@ -599,12 +599,13 @@ function CompetitionExplorer130(){
  const [query,setQuery]=useState('');
  const [status,setStatus]=useState('Todas');
  const [selected,setSelected]=useState<RacketonCompetition130|null>(null);
+ const [categoryFilter,setCategoryFilter]=useState('Todas');
  useEffect(()=>{
   let active=true;
   async function load(){
    if(!supabase){setError('Supabase no está configurado.');setLoading(false);return;}
    const {data,error:err}=await supabase.from('racketon_competitions')
-    .select('id,title,sport,format,city,region,venue_name,starts_on,ends_on,registration_opens_on,registration_closes_on,capacity,level_min,level_max,description,rules_url,status')
+    .select('id,title,sport,format,city,region,venue_name,starts_on,ends_on,registration_opens_on,registration_closes_on,capacity,level_min,level_max,description,rules_url,status,poster_url,categories,events,category_system')
     .eq('is_published',true).order('starts_on',{ascending:true}).limit(250);
    if(!active)return;
    setLoading(false);
@@ -625,15 +626,16 @@ function CompetitionExplorer130(){
  const filtered=items.filter(x=>(sport==='Todos'||x.sport===sport)
   &&(!region||[x.city,x.region,x.venue_name||''].join(' ').toLocaleLowerCase('es').includes(region.toLocaleLowerCase('es')))
   &&(!query||[x.title,x.sport,x.format,x.description||''].join(' ').toLocaleLowerCase('es').includes(query.toLocaleLowerCase('es')))
-  &&(status==='Todas'||phase(x)===status));
+  &&(status==='Todas'||phase(x)===status)
+  &&(categoryFilter==='Todas'||(x.categories||[]).includes(categoryFilter)));
  const date=(x:string|null)=>x?new Date(x+'T12:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'short',year:'numeric'}):'Por confirmar';
  return <div className="rkt-comp130">
   <style>{`.rkt-comp130{max-width:1120px;display:grid;gap:19px}.rkt-comp130 *{box-sizing:border-box}.rkt-comp130-hero{background:linear-gradient(115deg,#171b29,#4b1427 72%,#bd1539);color:white;padding:30px;border-radius:20px}.rkt-comp130-hero small{color:#ffb5c4;font-weight:900;letter-spacing:1.6px}.rkt-comp130-hero h2{font-size:clamp(24px,3vw,35px);margin:10px 0}.rkt-comp130-hero p{max-width:630px;color:#e8dce2;font-size:14px;line-height:1.6}.rkt-comp130-filter{background:#fff;border:1px solid #e8eaf0;padding:18px;border-radius:16px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:11px}.rkt-comp130-filter label{display:grid;gap:7px;font-size:11px;font-weight:850;color:#667085}.rkt-comp130-filter input,.rkt-comp130-filter select{width:100%;padding:12px;border-radius:9px;border:1px solid #dfe3e9;background:white;color:#1b2636;font-size:13px}.rkt-comp130-count{font-size:13px;color:#667085}.rkt-comp130-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}.rkt-comp130-card{background:white;border:1px solid #e7eaf0;border-radius:16px;padding:20px;display:grid;gap:12px}.rkt-comp130-card h3{margin:0;font-size:19px;color:#182032}.rkt-comp130-card p{margin:0;font-size:13px;color:#697487}.rkt-comp130-top{display:flex;align-items:center;justify-content:space-between;gap:9px}.rkt-comp130-tag{border-radius:100px;background:#fff0f3;color:#b81235;padding:7px 11px;font-size:11px;font-weight:850}.rkt-comp130-status{font-size:11px;font-weight:850;color:#667085}.rkt-comp130-details{display:grid;gap:9px;font-size:12px;color:#475467}.rkt-comp130-card button,.rkt-comp130-back{border:0;background:#c8102e;color:white;border-radius:10px;padding:12px 16px;cursor:pointer;font-weight:850;text-align:center}.rkt-comp130-empty{background:white;border:1px dashed #d7dce5;border-radius:16px;padding:40px 20px;text-align:center;color:#667085;line-height:1.6}.rkt-comp130-info{background:#fff7ed;border:1px solid #fed7aa;color:#92400e;padding:13px;border-radius:10px;font-size:12px}.rkt-comp130-detail{background:white;border:1px solid #e8eaf0;padding:24px;border-radius:18px;display:grid;gap:16px}.rkt-comp130-detail h2{margin:0}.rkt-comp130-detail p{line-height:1.7;color:#536075;white-space:pre-wrap}.rkt-comp130-detail dl{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}.rkt-comp130-detail dl div{padding:12px;background:#f8fafc;border-radius:10px}.rkt-comp130-detail dt{font-size:11px;color:#667085}.rkt-comp130-detail dd{margin:5px 0 0;font-weight:800;font-size:13px}.rkt-comp130-detail a{color:#c8102e;font-weight:800;overflow-wrap:anywhere}@media(max-width:760px){.rkt-comp130-filter{grid-template-columns:repeat(2,minmax(0,1fr))}.rkt-comp130-grid{grid-template-columns:1fr}.rkt-comp130-detail dl{grid-template-columns:1fr}}@media(max-width:420px){.rkt-comp130-filter{grid-template-columns:1fr}}`}</style>
   <header className="rkt-comp130-hero"><small>RACKETON · COMPETIR</small><h2>Explora competiciones</h2><p>Encuentra torneos y ligas publicados por los organizadores. Filtra por deporte, ubicación y periodo de inscripción.</p></header>
-  {selected?<div className="rkt-comp130-detail"><button className="rkt-comp130-back" type="button" onClick={()=>setSelected(null)}>← Volver a competiciones</button><span className="rkt-comp130-tag">{selected.sport} · {selected.format}</span><h2>{selected.title}</h2><p>{selected.description||'El organizador todavía no ha añadido una descripción.'}</p><dl><div><dt>Ubicación</dt><dd>{selected.venue_name||selected.city} · {selected.city}, {selected.region}</dd></div><div><dt>Fechas</dt><dd>{date(selected.starts_on)}{selected.ends_on?' – '+date(selected.ends_on):''}</dd></div><div><dt>Inscripciones</dt><dd>{phase(selected)} · cierre {date(selected.registration_closes_on)}</dd></div><div><dt>Nivel</dt><dd>{selected.level_min||'Sin especificar'}{selected.level_max?' – '+selected.level_max:''}</dd></div><div><dt>Plazas</dt><dd>{selected.capacity??'Por confirmar'}</dd></div><div><dt>Modalidad</dt><dd>{selected.format}</dd></div></dl>{selected.rules_url&&/^https:\/\//i.test(selected.rules_url)&&<a href={selected.rules_url} target="_blank" rel="noopener noreferrer">Consultar reglamento del organizador ↗</a>}<div className="rkt-comp130-info">Las inscripciones online aún no están habilitadas. Esta ficha es informativa y no reserva plaza.</div></div>:<>
-  <div className="rkt-comp130-filter"><label>Deporte<select value={sport} onChange={e=>setSport(e.target.value)}>{['Todos','Tenis','Pádel','Pickleball','Squash','Bádminton'].map(x=><option key={x}>{x}</option>)}</select></label><label>Ciudad o región<input value={region} onChange={e=>setRegion(e.target.value)} placeholder="Madrid, Alcalá..."/></label><label>Buscar competición<input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Nombre o modalidad"/></label><label>Estado<select value={status} onChange={e=>setStatus(e.target.value)}>{['Todas','Inscripción abierta','Próximamente','Inscripción cerrada','En curso','Finalizada','Cancelada'].map(x=><option key={x}>{x}</option>)}</select></label></div>
+  {selected?<div className="rkt-comp130-detail"><button className="rkt-comp130-back" type="button" onClick={()=>setSelected(null)}>← Volver a competiciones</button><span className="rkt-comp130-tag">{selected.sport} · {selected.format}</span>{selected.poster_url&&<img src={selected.poster_url} alt={"Cartel de "+selected.title} style={{width:"100%",maxHeight:480,objectFit:"contain",borderRadius:14,background:"#f8fafc"}}/>}<h2>{selected.title}</h2><p>{selected.description||'El organizador todavía no ha añadido una descripción.'}</p><dl><div><dt>Ubicación</dt><dd>{selected.venue_name||selected.city} · {selected.city}, {selected.region}</dd></div><div><dt>Fechas</dt><dd>{date(selected.starts_on)}{selected.ends_on?' – '+date(selected.ends_on):''}</dd></div><div><dt>Inscripciones</dt><dd>{phase(selected)} · cierre {date(selected.registration_closes_on)}</dd></div><div><dt>Nivel</dt><dd>{selected.level_min||'Sin especificar'}{selected.level_max?' – '+selected.level_max:''}</dd></div><div><dt>Plazas</dt><dd>{selected.capacity??'Por confirmar'}</dd></div><div><dt>Modalidad</dt><dd>{selected.format}</dd></div></dl>{selected.rules_url&&/^https:\/\//i.test(selected.rules_url)&&<a href={selected.rules_url} target="_blank" rel="noopener noreferrer">Consultar reglamento del organizador ↗</a>}<div><strong>Pruebas:</strong> {(selected.events||[]).join(", ")||"Sin especificar"}</div><div><strong>Categorías ({selected.category_system||"por definir"}):</strong> {(selected.categories||[]).join(", ")||"Sin especificar"}</div><div className="rkt-comp130-info">Las inscripciones online aún no están habilitadas. Esta ficha es informativa y no reserva plaza.</div></div>:<>
+  <div className="rkt-comp130-filter"><label>Deporte<select value={sport} onChange={e=>setSport(e.target.value)}>{['Todos','Tenis','Pádel','Pickleball','Squash','Bádminton'].map(x=><option key={x}>{x}</option>)}</select></label><label>Ciudad o región<input value={region} onChange={e=>setRegion(e.target.value)} placeholder="Madrid, Alcalá..."/></label><label>Buscar competición<input value={query} onChange={e=>setQuery(e.target.value)} placeholder="Nombre o modalidad"/></label><label>Estado<select value={status} onChange={e=>setStatus(e.target.value)}>{['Todas','Inscripción abierta','Próximamente','Inscripción cerrada','En curso','Finalizada','Cancelada'].map(x=><option key={x}>{x}</option>)}</select></label><label>Categoría<select value={categoryFilter} onChange={e=>setCategoryFilter(e.target.value)}><option>Todas</option>{Array.from(new Set(items.flatMap(x=>x.categories||[]))).sort().map(c=><option key={c}>{c}</option>)}</select></label></div>
   <div className="rkt-comp130-count">{loading?'Consultando competiciones…':`${filtered.length} competiciones encontradas`}</div>
-  {error?<div className="rkt-comp130-info">{error}. Comprueba que has ejecutado el SQL 0041.</div>:!loading&&filtered.length===0?<div className="rkt-comp130-empty"><strong>No hay competiciones publicadas con estos filtros.</strong><div>Cuando los clubes publiquen torneos, aparecerán aquí. No mostramos competiciones ficticias.</div></div>:<div className="rkt-comp130-grid">{filtered.map(x=><article className="rkt-comp130-card" key={x.id}><div className="rkt-comp130-top"><span className="rkt-comp130-tag">{x.sport} · {x.format}</span><span className="rkt-comp130-status">{phase(x)}</span></div><h3>{x.title}</h3><p>{x.city} · {x.region}</p><div className="rkt-comp130-details"><span>📅 {date(x.starts_on)}{x.ends_on?' – '+date(x.ends_on):''}</span><span>📍 {x.venue_name||'Sede por confirmar'}</span><span>🎯 {x.level_min||'Nivel abierto'}{x.level_max?' – '+x.level_max:''}</span></div><button type="button" onClick={()=>setSelected(x)}>Ver competición</button></article>)}</div>}
+  {error?<div className="rkt-comp130-info">{error}. Comprueba que has ejecutado el SQL 0041.</div>:!loading&&filtered.length===0?<div className="rkt-comp130-empty"><strong>No hay competiciones publicadas con estos filtros.</strong><div>Cuando los clubes publiquen torneos, aparecerán aquí. No mostramos competiciones ficticias.</div></div>:<div className="rkt-comp130-grid">{filtered.map(x=><article className="rkt-comp130-card" key={x.id}><div className="rkt-comp130-top"><span className="rkt-comp130-tag">{x.sport} · {x.format}</span><span className="rkt-comp130-status">{phase(x)}</span></div><h3>{x.title}</h3>{x.poster_url&&<img src={x.poster_url} alt={"Cartel de "+x.title} loading="lazy" style={{width:"100%",height:190,objectFit:"cover",borderRadius:11}}/>}<p>{x.city} · {x.region}</p><div className="rkt-comp130-details"><span>📅 {date(x.starts_on)}{x.ends_on?' – '+date(x.ends_on):''}</span><span>📍 {x.venue_name||'Sede por confirmar'}</span><span>🎯 {(x.categories||[]).join(", ")||"Categorías por definir"}</span><span>🏆 {(x.events||[]).join(", ")||"Pruebas por definir"}</span></div><button type="button" onClick={()=>setSelected(x)}>Ver competición</button></article>)}</div>}
   </>}
  </div>;
 }
@@ -643,21 +645,28 @@ type ClubCompetitionForm131={
  title:string;sport:string;format:string;city:string;region:string;venue_name:string;
  starts_on:string;ends_on:string;registration_opens_on:string;registration_closes_on:string;
  capacity:string;level_min:string;level_max:string;description:string;rules_url:string;
+ poster_url:string;category_system:string;categories:string[];events:string[];
 };
 const emptyCompetition131:ClubCompetitionForm131={
  title:'',sport:'Tenis',format:'Individual',city:'',region:'',venue_name:'',
  starts_on:'',ends_on:'',registration_opens_on:'',registration_closes_on:'',
- capacity:'',level_min:'',level_max:'',description:'',rules_url:''
+ capacity:'',level_min:'',level_max:'',description:'',rules_url:'',
+ poster_url:'',category_system:'Edad',categories:[],events:[]
 };
 function ClubCompetitionManager131({userId}:{userId:string}){
  const [form,setForm]=useState<ClubCompetitionForm131>(emptyCompetition131);
  const [editing,setEditing]=useState<string|null>(null);
+ const [posterFile,setPosterFile]=useState<File|null>(null);
  const [items,setItems]=useState<Array<RacketonCompetition130&{is_published:boolean}>>([]);
  const [loading,setLoading]=useState(true);
  const [saving,setSaving]=useState(false);
  const [notice,setNotice]=useState('');
  const [isError,setIsError]=useState(false);
  const set=(k:keyof ClubCompetitionForm131,v:string)=>setForm(f=>({...f,[k]:v}));
+ const ageCategories=['Sub-8','Benjamín (Sub-10)','Alevín (Sub-12)','Infantil (Sub-14)','Cadete (Sub-16)','Junior (Sub-18)','Absoluto','Veteranos +30','Veteranos +35','Veteranos +40','Veteranos +45','Veteranos +50','Veteranos +55','Veteranos +60','Veteranos +65','Veteranos +70'];
+ const ratingCategories=Array.from({length:20},(_,i)=>'RACKETON '+(i+1));
+ const eventOptions=['Individual masculino','Individual femenino','Dobles masculino','Dobles femenino','Dobles mixto'];
+ const toggle=(key:'categories'|'events',v:string)=>setForm(f=>({...f,[key]:f[key].includes(v)?f[key].filter(x=>x!==v):[...f[key],v]}));
  const refresh=async()=>{
   if(!supabase)return;
   const {data,error}=await supabase.from('racketon_competitions')
@@ -673,7 +682,7 @@ function ClubCompetitionManager131({userId}:{userId:string}){
    venue_name:x.venue_name||'',starts_on:x.starts_on,ends_on:x.ends_on||'',
    registration_opens_on:x.registration_opens_on||'',registration_closes_on:x.registration_closes_on||'',
    capacity:x.capacity==null?'':String(x.capacity),level_min:x.level_min||'',level_max:x.level_max||'',
-   description:x.description||'',rules_url:x.rules_url||''});
+   description:x.description||'',rules_url:x.rules_url||'',poster_url:x.poster_url||'',category_system:x.category_system||'Edad',categories:x.categories||[],events:x.events||[]});setPosterFile(null);
   window.scrollTo({top:0,behavior:'smooth'});
  };
  const save=async(e:React.FormEvent)=>{
@@ -681,21 +690,31 @@ function ClubCompetitionManager131({userId}:{userId:string}){
   if(form.ends_on&&form.ends_on<form.starts_on){setNotice('La fecha final debe ser posterior a la inicial.');setIsError(true);return;}
   if(form.registration_opens_on&&form.registration_closes_on&&form.registration_closes_on<form.registration_opens_on){setNotice('Revisa las fechas de inscripción.');setIsError(true);return;}
   if(form.rules_url&&!/^https:\/\//i.test(form.rules_url)){setNotice('El reglamento debe tener una dirección HTTPS válida.');setIsError(true);return;}
+  if(!form.categories.length||!form.events.length){setNotice('Selecciona al menos una categoría y una prueba.');setIsError(true);return;}
   setSaving(true);setNotice('');
+  let posterUrl=form.poster_url;
+  if(posterFile){
+   const ext=posterFile.type==='image/png'?'png':posterFile.type==='image/webp'?'webp':'jpg';
+   const path=userId+'/'+crypto.randomUUID()+'.'+ext;
+   const upload=await supabase.storage.from('competition-posters').upload(path,posterFile,{contentType:posterFile.type,upsert:false});
+   if(upload.error){setSaving(false);setNotice('No se pudo subir el cartel: '+upload.error.message);setIsError(true);return;}
+   posterUrl=supabase.storage.from('competition-posters').getPublicUrl(path).data.publicUrl;
+  }
   const payload={title:form.title.trim(),sport:form.sport,format:form.format,city:form.city.trim(),
    region:form.region.trim(),venue_name:form.venue_name.trim()||null,starts_on:form.starts_on,
    ends_on:form.ends_on||null,registration_opens_on:form.registration_opens_on||null,
    registration_closes_on:form.registration_closes_on||null,
    capacity:form.capacity?Number(form.capacity):null,level_min:form.level_min.trim()||null,
    level_max:form.level_max.trim()||null,description:form.description.trim()||null,
-   rules_url:form.rules_url.trim()||null};
+   rules_url:form.rules_url.trim()||null,poster_url:posterUrl||null,category_system:form.category_system,
+   categories:form.categories,events:form.events};
   const result=editing
    ?await supabase.from('racketon_competitions').update(payload).eq('id',editing).eq('organizer_id',userId)
    :await supabase.from('racketon_competitions').insert({...payload,organizer_id:userId,is_published:false});
   setSaving(false);
   if(result.error){setNotice('No se pudo guardar: '+result.error.message);setIsError(true);return;}
   setNotice(editing?'Competición actualizada.':'Borrador creado. Publícalo cuando esté listo.');
-  setIsError(false);setEditing(null);setForm(emptyCompetition131);await refresh();
+  setIsError(false);setEditing(null);setForm(emptyCompetition131);setPosterFile(null);await refresh();
  };
  const publish=async(x:RacketonCompetition130&{is_published:boolean})=>{
   if(!supabase)return;
@@ -715,6 +734,10 @@ function ClubCompetitionManager131({userId}:{userId:string}){
   <label>Deporte<select value={form.sport} onChange={e=>set('sport',e.target.value)}>{['Tenis','Pádel','Pickleball','Squash','Bádminton'].map(x=><option key={x}>{x}</option>)}</select></label>
   <label>Modalidad<select value={form.format} onChange={e=>set('format',e.target.value)}>{['Individual','Dobles','Mixto','Equipos','Liga','Round Robin'].map(x=><option key={x}>{x}</option>)}</select></label>
   <label>Plazas máximas<input type="number" min={1} value={form.capacity} onChange={e=>set('capacity',e.target.value)} placeholder="Opcional"/></label>
+  <label className="rkt-club131-wide">Cartel del torneo (JPG, PNG o WebP, máximo 5 MB)<input type="file" accept="image/jpeg,image/png,image/webp" onChange={e=>{const f=e.target.files?.[0]||null;if(f&&(f.size>5*1024*1024||!['image/jpeg','image/png','image/webp'].includes(f.type))){setNotice('El cartel debe ser JPG, PNG o WebP y ocupar como máximo 5 MB.');setIsError(true);e.target.value='';return;}setPosterFile(f);}}/>{(posterFile||form.poster_url)&&<img src={posterFile?URL.createObjectURL(posterFile):form.poster_url} alt="Vista previa del cartel" style={{maxWidth:230,maxHeight:310,objectFit:'contain',borderRadius:12,marginTop:8}}/>}</label>
+  <label className="rkt-club131-wide">Sistema de categorías<select value={form.category_system} onChange={e=>setForm(f=>({...f,category_system:e.target.value,categories:[]}))}><option value="Edad">Categorías por edad (tenis)</option><option value="Rating">Niveles RACKETON Rating (tenis 1–20)</option></select></label>
+  <div className="rkt-club131-wide"><strong style={{display:'block',marginBottom:9}}>Categorías convocadas · selecciona una o varias</strong><div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{(form.category_system==='Edad'?ageCategories:ratingCategories).map(c=><label key={c} style={{display:'flex',alignItems:'center',gap:6,border:'1px solid #dce1e8',borderRadius:9,padding:'9px 11px',cursor:'pointer',background:form.categories.includes(c)?'#fff1f2':'white'}}><input type="checkbox" checked={form.categories.includes(c)} onChange={()=>toggle('categories',c)} style={{width:'auto'}}/>{c}</label>)}</div></div>
+  <div className="rkt-club131-wide"><strong style={{display:'block',marginBottom:9}}>Pruebas convocadas · selecciona una o varias</strong><div style={{display:'flex',gap:8,flexWrap:'wrap'}}>{eventOptions.map(v=><label key={v} style={{display:'flex',alignItems:'center',gap:6,border:'1px solid #dce1e8',borderRadius:9,padding:'9px 11px',cursor:'pointer',background:form.events.includes(v)?'#fff1f2':'white'}}><input type="checkbox" checked={form.events.includes(v)} onChange={()=>toggle('events',v)} style={{width:'auto'}}/>{v}</label>)}</div></div>
   <label>Ciudad<input required value={form.city} onChange={e=>set('city',e.target.value)}/></label>
   <label>Provincia o comunidad<input required value={form.region} onChange={e=>set('region',e.target.value)}/></label>
   <label>Sede<input value={form.venue_name} onChange={e=>set('venue_name',e.target.value)}/></label>
@@ -726,7 +749,7 @@ function ClubCompetitionManager131({userId}:{userId:string}){
   <label>Nivel máximo<input value={form.level_max} onChange={e=>set('level_max',e.target.value)} placeholder="Opcional"/></label>
   <label className="rkt-club131-wide">Descripción y condiciones<textarea value={form.description} onChange={e=>set('description',e.target.value)}/></label>
   <label className="rkt-club131-wide">Enlace HTTPS al reglamento<input type="url" value={form.rules_url} onChange={e=>set('rules_url',e.target.value)} placeholder="https://..."/></label>
-  </div><div className="rkt-club131-actions"><button className="rkt-club131-primary" type="submit" disabled={saving}>{saving?'Guardando…':editing?'Guardar cambios':'Guardar borrador'}</button>{editing&&<button type="button" onClick={()=>{setEditing(null);setForm(emptyCompetition131)}}>Cancelar edición</button>}</div></form></div>
+  </div><div className="rkt-club131-actions"><button className="rkt-club131-primary" type="submit" disabled={saving}>{saving?'Guardando…':editing?'Guardar cambios':'Guardar borrador'}</button>{editing&&<button type="button" onClick={()=>{setEditing(null);setForm(emptyCompetition131);setPosterFile(null)}}>Cancelar edición</button>}</div></form></div>
   {notice&&<div role="status" className={'rkt-club131-alert'+(isError?' error':'')}>{notice}</div>}
   <div className="rkt-club131-panel"><h3>Mis competiciones</h3><div className="rkt-club131-note">Solo puedes editar las competiciones creadas con tu cuenta autorizada de club. Publicar las hará visibles para todos los jugadores. Las inscripciones online llegarán en la siguiente fase.</div><div className="rkt-club131-list" style={{marginTop:14}}>{loading?'Cargando competiciones…':items.length===0?'Todavía no has creado competiciones.':items.map(x=><div className="rkt-club131-item" key={x.id}><div><strong>{x.title}</strong><small>{x.sport} · {x.city} · {x.starts_on} · {x.is_published?'🟢 Publicada':'⚪ Borrador'}</small></div><div className="rkt-club131-actions"><button type="button" onClick={()=>edit(x)}>Editar</button><button type="button" className={x.is_published?'':'rkt-club131-primary'} onClick={()=>void publish(x)}>{x.is_published?'Retirar':'Publicar'}</button></div></div>)}</div></div>
  </section>;
