@@ -546,7 +546,7 @@ function PlayerNotices128({userId,onNavigate}:{userId:string;onNavigate:(area:Pl
   ]);
   if(!active)return;
   if(challenges.error)setError('No se han podido consultar los desafíos. '+challenges.error.message);
-  if(read.error)setError(v=>v||'No se ha podido consultar el estado de lectura. Ejecuta la actualización SQL 0039.');
+  if(read.error)setError(v=>v||'No se ha podido consultar el estado de lectura: '+read.error.message);
   const list:PlayerNotice128[]=[];
   for(const c of challenges.data||[]){
    const status=String(c.status||'').toLowerCase();const incoming=c.challenged_id===userId;
