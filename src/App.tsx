@@ -528,7 +528,7 @@ function PlayerAgenda121({userId}:{userId:string}){
 }
 
 
-type PlayerNotice128={id:string;kind:'challenge'|'training';title:string;detail:string;date:string;action:'Desafíos'|'Mi agenda';urgent:boolean};
+type PlayerNotice128={id:string;kind:'challenge'|'training'|'competition';title:string;detail:string;date:string;action:'Desafíos'|'Mi agenda'|'Mis competiciones';urgent:boolean};
 function PlayerNotices128({userId,onNavigate}:{userId:string;onNavigate:(area:PlayerArea,sub:string)=>void}){
  const [notices,setNotices]=useState<PlayerNotice128[]>([]);
  const [seen,setSeen]=useState<string[]>([]);
@@ -538,16 +538,19 @@ function PlayerNotices128({userId,onNavigate}:{userId:string;onNavigate:(area:Pl
  const [saving,setSaving]=useState<string|null>(null);
  useEffect(()=>{let active=true;async function load(){if(!supabase)return;
   setLoading(true);setError('');
-  const [challenges,settings,done,read]=await Promise.all([
+  const [challenges,settings,done,read,competitionNotices]=await Promise.all([
    supabase.from('tennis_challenges').select('id,status,created_at,challenger_id,challenged_id').or(`challenger_id.eq.${userId},challenged_id.eq.${userId}`).order('created_at',{ascending:false}).limit(80),
    supabase.from('player_training_settings').select('start_date,weekdays,sport,duration').eq('user_id',userId).maybeSingle(),
    supabase.from('player_training_sessions').select('session_date').eq('user_id',userId).limit(1000),
-   supabase.from('player_notice_reads').select('notice_id').eq('user_id',userId).limit(1000)
+   supabase.from('player_notice_reads').select('notice_id').eq('user_id',userId).limit(1000),
+   supabase.from('racketon_competition_notices_141').select('id,title,body,created_at').eq('recipient_id',userId).order('created_at',{ascending:false}).limit(100)
   ]);
   if(!active)return;
   if(challenges.error)setError('No se han podido consultar los desafíos. '+challenges.error.message);
   if(read.error)setError(v=>v||'No se ha podido consultar el estado de lectura: '+read.error.message);
   const list:PlayerNotice128[]=[];
+  if(competitionNotices.error)setError(v=>v||'No se pudieron consultar los avisos de competición: '+competitionNotices.error.message);
+  for(const n of competitionNotices.data||[])list.push({id:'competition-'+n.id,kind:'competition',title:n.title,detail:n.body,date:n.created_at,action:'Mis competiciones',urgent:true});
   for(const c of challenges.data||[]){
    const status=String(c.status||'').toLowerCase();const incoming=c.challenged_id===userId;
    if(status==='pending'||status==='proposed'||status==='accepted'||status==='confirmed'){
@@ -577,8 +580,8 @@ function PlayerNotices128({userId,onNavigate}:{userId:string;onNavigate:(area:Pl
  return <div className="rkt-notices"><div className="rkt-notices-hero"><div><span>MI CENTRO DE ACTIVIDAD</span><h2>Siempre al día de tu deporte</h2><p>Desafíos que requieren atención y próximos entrenamientos, reunidos en un solo lugar.</p></div><div className="rkt-notices-counter"><strong>{unread}</strong><small>sin leer</small></div></div>
   <div className="rkt-notices-toolbar"><div>{(['Todos','Pendientes','Leídos'] as const).map(f=><button type="button" className={filter===f?'active':''} key={f} onClick={()=>setFilter(f)}>{f}</button>)}</div><span>{visible.length} avisos</span></div>
   {error&&<p className="rkt-notices-error" role="alert">{error}</p>}
-  {loading?<div className="rkt-notices-empty">Cargando avisos…</div>:visible.length===0?<div className="rkt-notices-empty"><Bell size={32}/><h3>{filter==='Todos'?'No tienes avisos por ahora':'No hay avisos en este filtro'}</h3><p>Las nuevas invitaciones y los entrenamientos próximos aparecerán aquí.</p></div>:<div className="rkt-notices-list">{visible.map(n=><article key={n.id} className={'rkt-notice '+(!seen.includes(n.id)?'unread':'')}><div className={'rkt-notice-icon '+n.kind}>{n.kind==='training'?<Dumbbell size={21}/>:<Swords size={21}/>}</div><div className="rkt-notice-main"><div className="rkt-notice-tags"><span>{n.kind==='training'?'ENTRENAMIENTO':'DESAFÍO'}</span>{n.urgent&&<em>Requiere atención</em>}{!seen.includes(n.id)&&<b>Nuevo</b>}</div><h3>{n.title}</h3><p>{n.detail}</p><small>{n.date?new Date(n.date.includes('T')?n.date:n.date+'T12:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'}):'Fecha pendiente'}</small><div className="rkt-notice-actions"><button type="button" onClick={()=>onNavigate(n.action==='Desafíos'?'Competir':'Inicio',n.action)}> {n.kind==='training'?'Ver entrenamiento':'Ver desafío'} <ArrowRight size={15}/></button>{!seen.includes(n.id)&&<button type="button" className="secondary" disabled={saving===n.id} onClick={()=>void mark(n.id)}>{saving===n.id?'Guardando…':'Marcar como leído'}</button>}</div></div></article>)}</div>}
-  <p className="rkt-notices-footnote">Los avisos se generan a partir de tus desafíos y entrenamientos registrados. No se envían notificaciones push ni correos desde esta pantalla.</p>
+  {loading?<div className="rkt-notices-empty">Cargando avisos…</div>:visible.length===0?<div className="rkt-notices-empty"><Bell size={32}/><h3>{filter==='Todos'?'No tienes avisos por ahora':'No hay avisos en este filtro'}</h3><p>Las nuevas invitaciones y los entrenamientos próximos aparecerán aquí.</p></div>:<div className="rkt-notices-list">{visible.map(n=><article key={n.id} className={'rkt-notice '+(!seen.includes(n.id)?'unread':'')}><div className={'rkt-notice-icon '+n.kind}>{n.kind==='training'?<Dumbbell size={21}/>:<Swords size={21}/>}</div><div className="rkt-notice-main"><div className="rkt-notice-tags"><span>{n.kind==='training'?'ENTRENAMIENTO':n.kind==='competition'?'COMPETICIÓN':'DESAFÍO'}</span>{n.urgent&&<em>Requiere atención</em>}{!seen.includes(n.id)&&<b>Nuevo</b>}</div><h3>{n.title}</h3><p>{n.detail}</p><small>{n.date?new Date(n.date.includes('T')?n.date:n.date+'T12:00:00').toLocaleDateString('es-ES',{day:'numeric',month:'long',year:'numeric'}):'Fecha pendiente'}</small><div className="rkt-notice-actions"><button type="button" onClick={()=>onNavigate(n.kind==='competition'?'Competir':n.action==='Desafíos'?'Competir':'Inicio',n.action)}> {n.kind==='training'?'Ver entrenamiento':n.kind==='competition'?'Mis competiciones':'Ver desafío'} <ArrowRight size={15}/></button>{!seen.includes(n.id)&&<button type="button" className="secondary" disabled={saving===n.id} onClick={()=>void mark(n.id)}>{saving===n.id?'Guardando…':'Marcar como leído'}</button>}</div></div></article>)}</div>}
+  <p className="rkt-notices-footnote">Los avisos se generan a partir de tus desafíos y entrenamientos registrados. Los cambios de inscripción se notifican dentro de RACKETON. El envío de correo requiere configurar un proveedor transaccional.</p>
  </div>
 }
 
@@ -932,6 +935,7 @@ function ClubEligibility140({competitionId}:{competitionId:string}){
  const [error,setError]=useState('');const [loading,setLoading]=useState(true);
  const [busy,setBusy]=useState<string|null>(null);
  const [targets,setTargets]=useState<Record<string,string>>({});
+ const [reasons,setReasons]=useState<Record<string,string>>({});
  const refresh=async()=>{
   if(!supabase)return;
   setLoading(true);setError('');
@@ -945,15 +949,15 @@ function ClubEligibility140({competitionId}:{competitionId:string}){
   if(!supabase)return;
   const dest=targets[x.entry_id];
   if(mode==='transfer'&&!dest){setError('Selecciona una prueba de destino');return;}
-  if(!window.confirm(mode==='cancel'?'¿Dar de baja esta inscripción?':'¿Trasladar la inscripción a la prueba seleccionada?'))return;
+  if(!window.confirm((mode==='cancel'?'¿Dar de baja esta inscripción?':'¿Trasladar la inscripción a la prueba seleccionada?')+'\nSe notificará a todos los jugadores afectados dentro de RACKETON.'))return;
   setBusy(x.entry_id);setError('');
-  const {error:e}=await supabase.rpc('racketon_resolve_eligibility_140',{p_entry_id:x.entry_id,p_action:mode,p_target_event_id:mode==='transfer'?dest:null});
+  const {error:e}=await supabase.rpc('racketon_resolve_eligibility_141',{p_entry_id:x.entry_id,p_action:mode,p_target_event_id:mode==='transfer'?dest:null,p_note:reasons[x.entry_id]?.trim()||null});
   setBusy(null);if(e){setError(e.message);return;}await refresh();
  };
  return <section style={{background:'#fff',border:'1px solid #e6e8ed',borderRadius:17,padding:19,margin:'16px 0',display:'grid',gap:13}}>
  <div style={{display:'flex',justifyContent:'space-between',alignItems:'center',gap:10,flexWrap:'wrap'}}><div><strong style={{fontSize:17}}>Control de elegibilidad</strong><div style={{fontSize:12,color:'#667085',marginTop:4}}>Revisión actual de rating y edad. Ninguna inscripción se cancela automáticamente.</div></div><button type="button" onClick={()=>void refresh()} disabled={loading}>↻ Revisar inscritos</button></div>
  {error&&<div role="alert" style={{background:'#fff1f2',padding:12,borderRadius:9,color:'#9f1239'}}>{error}</div>}
- {loading?<span>Comprobando inscripciones…</span>:alerts.length===0?<div style={{background:'#ecfdf3',color:'#166534',padding:14,borderRadius:10,fontWeight:700}}>✓ No se han detectado incompatibilidades en las inscripciones activas.</div>:<><div style={{background:'#fff5e8',padding:12,borderRadius:10,color:'#92400e',fontWeight:800}}>⚠ {alerts.length} inscripción{alerts.length===1?' requiere':'es requieren'} revisión</div>{alerts.map(x=>{const source=events.find(e=>e.id===x.event_id);const candidates=events.filter(e=>e.id!==x.event_id&&e.discipline===source?.discipline);return <article key={x.entry_id} style={{border:'1px solid #f1d5b4',borderRadius:12,padding:14,display:'grid',gap:9}}><strong>{x.player_name||'Jugador sin nombre público'}{x.partner_name?' + '+x.partner_name:''}</strong><small>{source?.category||'Categoría'} · {source?.discipline||'Prueba'} · {x.status==='confirmed'?'Confirmada':'Pendiente'}</small><div style={{fontSize:12,color:'#9a3412',fontWeight:700}}>{x.reason}</div><small>Rating actual: {x.player_rating==null?'No disponible':Number(x.player_rating).toFixed(2)}{x.partner_name?' · Pareja: '+(x.partner_rating==null?'No disponible':Number(x.partner_rating).toFixed(2)):''}</small><div style={{display:'flex',gap:8,flexWrap:'wrap'}}><select aria-label="Prueba de destino" value={targets[x.entry_id]||''} onChange={e=>setTargets(v=>({...v,[x.entry_id]:e.target.value}))} style={{minWidth:175,flex:1,padding:9,borderRadius:8,border:'1px solid #d1d5db'}}><option value="">Seleccionar otra prueba…</option>{candidates.map(e=><option key={e.id} value={e.id}>{e.category} · {e.discipline}</option>)}</select><button type="button" disabled={busy===x.entry_id||!targets[x.entry_id]} onClick={()=>void action(x,'transfer')}>Trasladar</button><button type="button" disabled={busy===x.entry_id} onClick={()=>void action(x,'cancel')} style={{color:'#b91c1c'}}>Dar de baja</button></div><small style={{color:'#667085'}}>El traslado vuelve a comprobar los requisitos y las plazas disponibles en el servidor.</small></article>})}</>}
+ {loading?<span>Comprobando inscripciones…</span>:alerts.length===0?<div style={{background:'#ecfdf3',color:'#166534',padding:14,borderRadius:10,fontWeight:700}}>✓ No se han detectado incompatibilidades en las inscripciones activas.</div>:<><div style={{background:'#fff5e8',padding:12,borderRadius:10,color:'#92400e',fontWeight:800}}>⚠ {alerts.length} inscripción{alerts.length===1?' requiere':'es requieren'} revisión</div>{alerts.map(x=>{const source=events.find(e=>e.id===x.event_id);const candidates=events.filter(e=>e.id!==x.event_id&&e.discipline===source?.discipline);return <article key={x.entry_id} style={{border:'1px solid #f1d5b4',borderRadius:12,padding:14,display:'grid',gap:9}}><strong>{x.player_name||'Jugador sin nombre público'}{x.partner_name?' + '+x.partner_name:''}</strong><small>{source?.category||'Categoría'} · {source?.discipline||'Prueba'} · {x.status==='confirmed'?'Confirmada':'Pendiente'}</small><div style={{fontSize:12,color:'#9a3412',fontWeight:700}}>{x.reason}</div><small>Rating actual: {x.player_rating==null?'No disponible':Number(x.player_rating).toFixed(2)}{x.partner_name?' · Pareja: '+(x.partner_rating==null?'No disponible':Number(x.partner_rating).toFixed(2)):''}</small><label style={{display:'grid',gap:5,fontSize:12,fontWeight:700}}>Mensaje adicional al jugador (opcional)<textarea rows={2} maxLength={500} placeholder="Explica cualquier detalle relevante…" value={reasons[x.entry_id]||''} onChange={e=>setReasons(v=>({...v,[x.entry_id]:e.target.value}))} style={{border:'1px solid #d1d5db',borderRadius:8,padding:9,fontFamily:'inherit'}}/></label><div style={{display:'flex',gap:8,flexWrap:'wrap'}}><select aria-label="Prueba de destino" value={targets[x.entry_id]||''} onChange={e=>setTargets(v=>({...v,[x.entry_id]:e.target.value}))} style={{minWidth:175,flex:1,padding:9,borderRadius:8,border:'1px solid #d1d5db'}}><option value="">Seleccionar otra prueba…</option>{candidates.map(e=><option key={e.id} value={e.id}>{e.category} · {e.discipline}</option>)}</select><button type="button" disabled={busy===x.entry_id||!targets[x.entry_id]} onClick={()=>void action(x,'transfer')}>Trasladar</button><button type="button" disabled={busy===x.entry_id} onClick={()=>void action(x,'cancel')} style={{color:'#b91c1c'}}>Dar de baja</button></div><small style={{color:'#667085'}}>El traslado vuelve a comprobar los requisitos y las plazas disponibles en el servidor.</small></article>})}</>}
  </section>;
 }
 type ClubEntry137={id:string;event_id:string;player_id:string;partner_id:string|null;status:string;created_at:string;player_name:string|null;player_photo:string|null;partner_name:string|null;partner_photo:string|null;player_rating:number|null;partner_rating:number|null};
