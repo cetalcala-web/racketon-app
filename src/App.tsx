@@ -454,6 +454,8 @@ function PlayerAgenda121({userId}:{userId:string}){
  const [filter,setFilter]=useState('Todos');
  const [view,setView]=useState<'calendario'|'lista'>('calendario');
  const [events,setEvents]=useState<AgendaEvent121[]>([]);
+ const [chatEvents,setChatEvents]=useState<AgendaEvent121[]>([]);
+ useEffect(()=>{let live=true;const load=async()=>{if(!supabase)return;try{const r=await supabase.rpc('racketon_chat_agenda_187').abortSignal(AbortSignal.timeout(10000));if(live&&!r.error)setChatEvents((r.data||[]).map((a:{id:number;starts_at:string;venue:string;name:string})=>{const d=new Date(a.starts_at);return {id:'chat-'+a.id,date:trainingDate126(d)+'T'+String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'),title:'Encuentro acordado',category:'Desafíos',subtitle:a.name,status:'Aceptado · sin reserva',venue:a.venue}}))}catch{}};void load();const t=setInterval(load,15000);return()=>{live=false;clearInterval(t)}},[userId]);
  const [loading,setLoading]=useState(true);
  const [warning,setWarning]=useState('');
  const [training,setTraining]=useState<TrainingConfig122|null>(null);
@@ -485,7 +487,7 @@ function PlayerAgenda121({userId}:{userId:string}){
   }
   return result;
  })();
- const calendarEvents=[...events,...trainingEvents];
+ const calendarEvents=[...events,...chatEvents,...trainingEvents];
  const trainingStats={planned:trainingEvents.filter(e=>e.date.slice(0,7)===trainingDate126(month).slice(0,7)).length,done:trainingEvents.filter(e=>e.date.slice(0,7)===trainingDate126(month).slice(0,7)&&e.status==='Realizado').length};
  const saveMove=async()=>{if(!supabase||!moving||!targetDate)return;const original=moving.replace('training-','');if(targetDate===original){setMoving(null);return;}if(!training?.start_date||targetDate<training.start_date){setMoveError('Selecciona una fecha dentro de la temporada.');return;}const end=new Date(training.start_date+'T12:00:00');end.setDate(end.getDate()+364);if(targetDate>trainingDate126(end)){setMoveError('La fecha debe estar dentro de las 52 semanas.');return;}if(trainingEvents.some(e=>e.id!==moving&&e.date===targetDate)){setMoveError('Ya tienes otro entrenamiento ese día.');return;}if(events.some(e=>e.date.slice(0,10)===targetDate)){setMoveError('Hay un desafío programado ese día. Selecciona otro.');return;}setMoveBusy(true);const r=await supabase.from('player_training_reschedules').upsert({user_id:userId,original_date:original,new_date:targetDate,updated_at:new Date().toISOString()},{onConflict:'user_id,original_date'});setMoveBusy(false);if(r.error){setMoveError('No se pudo reprogramar: '+r.error.message);return;}setMoved(v=>({...v,[original]:targetDate}));setMoving(null);setMoveError('')};
 
@@ -1054,6 +1056,10 @@ function PlayerNavigation112({user,opponent,onClearOpponent,onChallenge}:{user:U
  const [area,setArea]=useState<PlayerArea>('Inicio');
  const [sub,setSub]=useState('Mi panel');
  const [dataTab,setDataTab]=useState('Datos personales');
+ const [chatPeer,setChatPeer]=useState('');const [unread,setUnread]=useState(0);
+ useEffect(()=>{const open=(e:Event)=>{const id=(e as CustomEvent).detail;if(typeof id==='string'){setChatPeer(id);setArea('Inicio');setSub('Mensajes')}};window.addEventListener('racketon-chat-open',open);return()=>window.removeEventListener('racketon-chat-open',open)},[]);
+ useEffect(()=>{let live=true;const load=async()=>{if(!supabase)return;try{const r=await supabase.rpc('racketon_chat_unread_187').abortSignal(AbortSignal.timeout(10000));if(live&&!r.error)setUnread(Number(r.data)||0)}catch{}};void load();const t=setInterval(load,5000);return()=>{live=false;clearInterval(t)}},[user.id]);
+
  const go=(next:PlayerArea,child?:string)=>{setArea(next);setSub(child||playerArchitecture.find(x=>x.name===next)!.children[0]);window.scrollTo?.({top:0,behavior:'smooth'});};
 
  const planned:Record<string,string>={
@@ -1098,10 +1104,10 @@ function PlayerNavigation112({user,opponent,onClearOpponent,onChallenge}:{user:U
   @media(max-width:900px){.rkt-player-shell{grid-template-columns:1fr}.rkt-sidebar{display:none}.rkt-workspace{padding:20px 16px 105px}.rkt-mobile-trigger{display:flex;border:1px solid #e5e7eb;border-radius:10px;background:white;padding:10px 12px;align-items:center;gap:8px;font-weight:800}.rkt-mobile-sub{display:flex;gap:7px;overflow-x:auto;padding:0 0 14px;margin-bottom:15px}.rkt-mobile-sub button{white-space:nowrap;border:1px solid #e6e8ed;border-radius:100px;padding:9px 12px;background:#fff;font-size:12px;font-weight:750;color:#667085}.rkt-mobile-sub button.active{border-color:#c8102e;background:#fff0f3;color:#b80f31}.rkt-bottom-nav{position:fixed;bottom:0;left:0;right:0;z-index:80;display:grid;grid-template-columns:repeat(4,1fr);background:white;border-top:1px solid #e6e8ed;box-shadow:0 -8px 30px #1118270d;padding:8px 2px max(8px,env(safe-area-inset-bottom))}.rkt-bottom-nav button{border:0;background:none;display:flex;align-items:center;flex-direction:column;gap:4px;color:#667085;font-size:10px;font-weight:750;padding:5px 0}.rkt-bottom-nav button.active{color:#c8102e}.rkt-header-actions{margin-left:auto}.rkt-section-heading{margin-bottom:16px}}
   @media(min-width:901px){.rkt-bottom-nav,.rkt-mobile-sub{display:none}}
   `}</style>
-  <aside className="rkt-sidebar" aria-label="Navegación del jugador"><div className="rkt-sidebar-title">ESPACIO JUGADOR</div>{playerArchitecture.map((x,i)=>{const NavIcon=[Home,Trophy,ChartNoAxesColumnIncreasing,CalendarDays][i];return <div key={x.name}><button type="button" className={'rkt-nav-btn '+(area===x.name?'active':'')} onClick={()=>go(x.name)}><NavIcon size={19}/><span>{x.name}</span></button>{area===x.name&&<div className="rkt-nav-sub">{x.children.map(child=><button key={child} type="button" className={sub===child?'active':''} onClick={()=>setSub(child)}>{child}</button>)}</div>}</div>})}</aside>
+  <aside className="rkt-sidebar" aria-label="Navegación del jugador"><div className="rkt-sidebar-title">ESPACIO JUGADOR</div>{playerArchitecture.map((x,i)=>{const NavIcon=[Home,Trophy,ChartNoAxesColumnIncreasing,CalendarDays][i];return <div key={x.name}><button type="button" className={'rkt-nav-btn '+(area===x.name?'active':'')} onClick={()=>go(x.name)}><NavIcon size={19}/><span>{x.name}</span></button>{area===x.name&&<div className="rkt-nav-sub">{x.children.map(child=><button key={child} type="button" className={sub===child?'active':''} onClick={()=>setSub(child)}>{child}{child==='Mensajes'&&unread>0?` (${unread})`:null}</button>)}</div>}</div>})}</aside>
   <div className="rkt-workspace"><div className="rkt-topline"><div className="rkt-breadcrumb">RACKETON / {area.toUpperCase()} / <strong>{sub.toUpperCase()}</strong></div><div className="rkt-header-actions"><div className="rkt-header-chip" title="Monedero pendiente de integración" ><Wallet size={15}/> Monedero · Próximamente</div><button type="button" className="rkt-header-chip" onClick={()=>go('Inicio','Avisos')} aria-label="Avisos"><Bell size={15}/> Avisos</button></div></div>
   <div className="rkt-section-heading"><h1>{sub==='Mi panel'?'Mi RACKETON':sub}</h1><p>{sub==='Mi panel'?'Tu actividad deportiva, tus rivales y tu evolución en un solo lugar.':area+' · '+sub}</p></div>
-  <div className="rkt-mobile-sub">{playerArchitecture.find(x=>x.name===area)!.children.map(child=><button key={child} className={sub===child?'active':''} onClick={()=>setSub(child)}>{child}</button>)}</div>
+  <div className="rkt-mobile-sub">{playerArchitecture.find(x=>x.name===area)!.children.map(child=><button key={child} className={sub===child?'active':''} onClick={()=>setSub(child)}>{child}{child==='Mensajes'&&unread>0?` (${unread})`:null}</button>)}</div>
   <div className="rkt-screen-body">
   {area==='Inicio'&&sub==='Mi panel'?<PlayerHome102 user={user} onNavigate={(old:Tab)=>{if(old==='Desafíos'||old==='Jugadores')go('Competir','Desafíos');else if(old==='Rankings'||old==='Mis ligas')go('Clasificaciones',old==='Mis ligas'?'Mis ligas':'Clasificaciones RACKETON');else if(old==='Perfil'){setDataTab('Datos personales');go('Inicio','Mis datos')}else if(old==='Reservas')go('Reservas');else if(old==='Torneos')go('Competir','Explorar competiciones');}}/>:
   area==='Competir'&&sub==='Mis competiciones'?<PlayerCompetitions136 userId={user.id}/>:
@@ -1112,7 +1118,7 @@ function PlayerNavigation112({user,opponent,onClearOpponent,onChallenge}:{user:U
   area==='Clasificaciones'&&sub==='Mi rating'?<><div style={navCard}><h2>Mi rating y perfil competitivo</h2><TennisCompetitiveProfile userId={user.id}/></div><div style={navCard}><h2>Simulador de rating · Tenis</h2><TennisRatingSimulation1091 userId={user.id}/></div></>:
   area==='Clasificaciones'&&sub==='Historial'?<div style={navCard}><h2>Historial y evolución del rating · Tenis</h2><TennisRatingHistory userId={user.id}/><p style={{fontSize:13,color:'#64748b'}}>Las estadísticas históricas de pádel y pickleball se incorporarán cuando haya resultados competitivos disponibles.</p></div>:
   area==='Inicio'&&sub==='Mi agenda'?<PlayerAgenda121 userId={user.id}/>: 
-  area==='Inicio'&&sub==='Mensajes'?<PlayerChat185 key={user.id}/>: 
+  area==='Inicio'&&sub==='Mensajes'?<PlayerChat185 key={user.id+chatPeer} initialPeer={chatPeer}/>: 
   area==='Inicio'&&sub==='Avisos'?<PlayerNotices128 userId={user.id} onNavigate={go}/>: 
   area==='Inicio'&&sub==='Mis datos'?<div className="rkt-personal-section">
     <div className="rkt-personal-tabs">{([{name:'Datos personales',icon:UserRound},{name:'Privacidad',icon:ShieldCheck},{name:'Configuración',icon:UserPen},{name:'Mi monedero',icon:Wallet}] as {name:string;icon:LucideIcon}[]).map(item=>{const I=item.icon;return <button key={item.name} className={dataTab===item.name?'active':''} type="button" onClick={()=>setDataTab(item.name)}><I size={17}/>{item.name}</button>})}</div>
