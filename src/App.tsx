@@ -1,3 +1,4 @@
+import PlayerChat185 from './PlayerChat185';
 import SchoolManager090 from './SchoolManager091';
 import {PlayerEnrollments084} from './RankingEnrollments084';
 import { useEffect, useState } from 'react';
@@ -277,7 +278,7 @@ function PlayerHome102({user,onNavigate}:{user:User;onNavigate:(tab:Tab)=>void})
 
 type PlayerArea = 'Inicio'|'Competir'|'Clasificaciones'|'Reservas';
 const playerArchitecture: {name:PlayerArea;children:string[]}[] = [
- {name:'Inicio',children:['Mi panel','Mis datos','Mi agenda','Avisos']},
+ {name:'Inicio',children:['Mi panel','Mis datos','Mi agenda','Avisos','Mensajes']},
  {name:'Competir',children:['Mis competiciones','Explorar competiciones','Desafíos']},
  {name:'Clasificaciones',children:['Clasificaciones RACKETON','Mis ligas','Mi rating','Historial']},
  {name:'Reservas',children:['Buscar pistas','Mis reservas','Mis clubes']}
@@ -1111,6 +1112,7 @@ function PlayerNavigation112({user,opponent,onClearOpponent,onChallenge}:{user:U
   area==='Clasificaciones'&&sub==='Mi rating'?<><div style={navCard}><h2>Mi rating y perfil competitivo</h2><TennisCompetitiveProfile userId={user.id}/></div><div style={navCard}><h2>Simulador de rating · Tenis</h2><TennisRatingSimulation1091 userId={user.id}/></div></>:
   area==='Clasificaciones'&&sub==='Historial'?<div style={navCard}><h2>Historial y evolución del rating · Tenis</h2><TennisRatingHistory userId={user.id}/><p style={{fontSize:13,color:'#64748b'}}>Las estadísticas históricas de pádel y pickleball se incorporarán cuando haya resultados competitivos disponibles.</p></div>:
   area==='Inicio'&&sub==='Mi agenda'?<PlayerAgenda121 userId={user.id}/>: 
+  area==='Inicio'&&sub==='Mensajes'?<PlayerChat185 key={user.id}/>: 
   area==='Inicio'&&sub==='Avisos'?<PlayerNotices128 userId={user.id} onNavigate={go}/>: 
   area==='Inicio'&&sub==='Mis datos'?<div className="rkt-personal-section">
     <div className="rkt-personal-tabs">{([{name:'Datos personales',icon:UserRound},{name:'Privacidad',icon:ShieldCheck},{name:'Configuración',icon:UserPen},{name:'Mi monedero',icon:Wallet}] as {name:string;icon:LucideIcon}[]).map(item=>{const I=item.icon;return <button key={item.name} className={dataTab===item.name?'active':''} type="button" onClick={()=>setDataTab(item.name)}><I size={17}/>{item.name}</button>})}</div>
