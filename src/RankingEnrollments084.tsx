@@ -15,8 +15,8 @@ export function ClubEnrollmentAdmin084({rankingId}:{rankingId:string}){
  setRanking(a.data as Ranking);setItems((b.data||[]) as Enrollment[])},[rankingId]);
  useEffect(()=>{void load()},[load]);
  async function run(fn:string,args:Record<string,unknown>,message:string){const db=supabase;if(!db)return;setBusy(true);setError('');setNotice('');
- const {error:e}=await db.rpc(fn,args);if(e)setError(e.message);else{setNotice(message);await load()}setBusy(false)}
- return <section style={card}><h3 style={{margin:0}}>3. Inscripciones e invitaciones</h3>
+ try{const {error:e}=await db.rpc(fn,args).abortSignal(AbortSignal.timeout(20000));if(e)setError(e.message);else{setNotice(message);await load()}}catch(e){setError("No se pudo confirmar la operación. Actualiza antes de repetirla. "+String(e))}finally{setBusy(false)}}
+ return <section style={card}><h3 style={{margin:0}}>Participantes e invitaciones</h3>
  <p style={{margin:0,color:'#555',fontSize:13}}>Nadie entra en el ranking sin aceptación del jugador y aprobación del club.</p>
  {error&&<p role="alert" style={{color:'#b91c1c'}}>{error}</p>}{notice&&<p role="status" style={{color:'#15803d'}}>{notice}</p>}
  <label style={{display:'flex',alignItems:'center',gap:9}}><input type="checkbox" disabled={busy||!ranking} checked={ranking?.enrollment_open||false} onChange={e=>void run('racketon_set_enrollment_open_084',{p_ranking:rankingId,p_open:e.target.checked},'Visibilidad de inscripciones actualizada')}/>Permitir que los jugadores encuentren este ranking y soliciten participar</label>
@@ -30,7 +30,7 @@ export function ClubEnrollmentAdmin084({rankingId}:{rankingId:string}){
  <strong>{x.invited_email||'Jugador · '+x.player_id.slice(0,8)}</strong><span style={{fontSize:13}}>{status(x.status)}</span>
  {x.status==='pending_club'&&<div style={{display:'flex',gap:8}}><button style={button} disabled={busy} onClick={()=>void run('racketon_decide_enrollment_084',{p_enrollment:x.id,p_accept:true,p_as_club:true},'Solicitud aprobada')}>Aprobar</button><button type="button" disabled={busy} onClick={()=>void run('racketon_decide_enrollment_084',{p_enrollment:x.id,p_accept:false,p_as_club:true},'Solicitud rechazada')}>Rechazar</button></div>}
  </div>)}
- <small style={{color:'#666'}}>Los participantes activos podrán asignarse a grupos en la siguiente actualización.</small>
+ <small style={{color:'#666'}}>Cuando acepten la invitación, continúa al paso Grupos para asignarlos.</small>
  </section>
 }
 export function PlayerEnrollments084({userId}:{userId:string}){
@@ -40,7 +40,7 @@ export function PlayerEnrollments084({userId}:{userId:string}){
  if(r.error||c.error||m.error){setError(r.error?.message||c.error?.message||m.error?.message||'Error de consulta');return}
  setRankings((r.data||[]) as Ranking[]);setClubs((c.data||[]) as Club[]);setMine((m.data||[]) as Enrollment[])},[userId]);
  useEffect(()=>{void load()},[load]);
- async function run(fn:string,args:Record<string,unknown>,message:string){const db=supabase;if(!db)return;setBusy(true);setError('');setNotice('');const {error:e}=await db.rpc(fn,args);if(e)setError(e.message);else{setNotice(message);await load()}setBusy(false)}
+ async function run(fn:string,args:Record<string,unknown>,message:string){const db=supabase;if(!db)return;setBusy(true);setError('');setNotice('');try{const {error:e}=await db.rpc(fn,args).abortSignal(AbortSignal.timeout(20000));if(e)setError(e.message);else{setNotice(message);await load()}}catch(e){setError("No se pudo confirmar la operación. Actualiza antes de repetirla. "+String(e))}finally{setBusy(false)}}
  return <section style={{...card,maxWidth:1050,margin:'20px auto'}}><h2 style={{margin:0}}>Mis inscripciones a rankings oficiales</h2><p style={{margin:0,color:'#555'}}>Puedes solicitar entrar en un ranking abierto o aceptar una invitación. Nunca se te inscribirá sin tu consentimiento.</p>
  {error&&<p role="alert" style={{color:'#b91c1c'}}>{error}</p>}{notice&&<p role="status" style={{color:'#15803d'}}>{notice}</p>}
  <h3 style={{margin:'8px 0 0'}}>Mis solicitudes e invitaciones</h3>

@@ -21,6 +21,7 @@ export default function ClubRankingsAdmin081({userId}:{userId:string}){
  const [error,setError]=useState('');
  const [notice,setNotice]=useState('');
  const [busy,setBusy]=useState(false);
+ const [step,setStep]=useState(0); const [creating,setCreating]=useState(false);
  const load=useCallback(async()=>{
   if(!supabase)return;
   const a=await supabase.from('racketon_clubs').select('id,name,city').order('created_at',{ascending:false});
@@ -38,19 +39,19 @@ export default function ClubRankingsAdmin081({userId}:{userId:string}){
  const run=async(fn:string,args:Record<string,unknown>,success:string)=>{
   if(!supabase)return;
   setBusy(true);setError('');setNotice('');
-  const {data,error:e}=await supabase.rpc(fn,args);
+  try { const {data,error:e}=await supabase.rpc(fn,args).abortSignal(AbortSignal.timeout(20000));
   if(e){setError(e.message)}else{
    setNotice(success);
    await load();
-   if(fn==='racketon_create_club_ranking_080'){setRanking(String(data));setRankingName('')}
+   if(fn==='racketon_create_club_ranking_080'){setRanking(String(data));setRankingName('');setCreating(false);setStep(0)}
    if(fn==='racketon_add_group_080')setGroupName('');
   }
-  setBusy(false);
+  } catch(e){setError("No se pudo confirmar la operación. Actualiza antes de repetirla. "+String(e));} finally {setBusy(false);}
  };
  const filtered=rankings.filter(r=>r.club_id===club);
  return <section style={{maxWidth:1050,margin:'20px auto',display:'grid',gap:16}}>
-  <div style={panel}><span style={{color:'#c8102e',fontWeight:800,fontSize:12}}>RACKETON · RANKINGS OFICIALES</span><h2 style={{margin:'8px 0'}}>Gestión de rankings</h2><p style={{color:'#52525b'}}>Versión 0.8.4: configuración, solicitudes e invitaciones con aceptación bilateral. Gestión de grupos, ciclos y resultados competitivos.</p></div>
-  {error&&<div role="alert" style={{...panel,color:'#b91c1c'}}>Error: {error}. Comprueba que has ejecutado el SQL 0013.</div>}
+  <div style={panel}><span style={{color:'#c8102e',fontWeight:800,fontSize:12}}>RACKETON · RANKINGS OFICIALES</span><h2 style={{margin:'8px 0'}}>Gestión de rankings</h2><p style={{color:'#52525b'}}>Crea una competición o selecciona una existente para gestionarla.</p></div>
+  {error&&<div role="alert" style={{...panel,color:'#b91c1c'}}>{error}</div>}
   {notice&&<div role="status" style={{...panel,color:'#15803d'}}>{notice}</div>}
   <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:16}}>
    <div style={{...panel,display:'grid',gap:12,alignContent:'start'}}>
@@ -60,21 +61,22 @@ export default function ClubRankingsAdmin081({userId}:{userId:string}){
    </div>
   </div>
   {club&&<div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:16}}>
-   <form style={{...panel,display:'grid',gap:12}} onSubmit={e=>{e.preventDefault();void run('racketon_create_club_ranking_080',{p_club:club,p_name:rankingName,p_format:format},'Ranking creado como borrador')}}>
+   <div style={panel}><button style={button} onClick={()=>setCreating(!creating)}>{creating?"Cancelar":"+ Crear competición"}</button>{creating&&<form style={{...panel,display:'grid',gap:12}} onSubmit={e=>{e.preventDefault();void run('racketon_create_club_ranking_080',{p_club:club,p_name:rankingName,p_format:format},'Ranking creado como borrador')}}>
     <h3 style={{margin:0}}>1. Crear un ranking</h3>
     <label>Nombre<input required minLength={3} maxLength={120} style={input} value={rankingName} onChange={e=>setRankingName(e.target.value)} placeholder="Ej. Ranking social 2026/27"/></label>
     <label>Formato<select style={input} value={format} onChange={e=>setFormat(e.target.value)}><option value="box">Grupos (Box League)</option><option value="ladder">Escalera de desafíos</option><option value="points">Liga por puntos</option><option value="manual">Configuración manual</option></select></label>
     <button style={button} disabled={busy}>Crear ranking</button>
-   </form>
+   </form>}</div>
    <div style={{...panel,display:'grid',gap:12,alignContent:'start'}}>
     <h3 style={{margin:0}}>Rankings del club ({filtered.length})</h3>
-    <select style={input} value={ranking} onChange={e=>setRanking(e.target.value)}><option value="">Selecciona un ranking</option>{filtered.map(r=><option key={r.id} value={r.id}>{r.name} · {r.status==='draft'?'Borrador':r.status}</option>)}</select>
+    <select style={input} value={ranking} onChange={e=>{setRanking(e.target.value);setStep(0)}}><option value="">Selecciona un ranking</option>{filtered.map(r=><option key={r.id} value={r.id}>{r.name} · {r.status==='draft'?'Borrador':r.status}</option>)}</select>
     {!filtered.length&&<p style={{color:'#71717a'}}>Todavía no hay rankings.</p>}
    </div>
   </div>}
-  {ranking&&<RankingConfigurator083 key={ranking} rankingId={ranking} onSaved={load}/>}
-  {ranking&&<ClubEnrollmentAdmin084 key={ranking} rankingId={ranking}/>}
-  {ranking&&<div style={{...panel,display:'grid',gap:14}}>
+  {ranking&&<div style={panel}><h2>{filtered.find(r=>r.id===ranking)?.name}</h2><div style={{display:'flex',flexWrap:'wrap',gap:8}}>{['Reglamento','Participantes','Grupos','Ciclos y resultados'].map((t,i)=><button key={t} style={{...button,background:step===i?'#c8102e':'#f4f4f5',color:step===i?'white':'#27272a'}} onClick={()=>setStep(i)}>{i+1}. {t}</button>)}</div><p>{['Define las reglas y guarda la configuración.','Abre inscripciones o invita a jugadores. Deben aceptar antes de asignarlos.','Crea grupos y asigna los participantes activos.','Genera los partidos, registra resultados y consulta las promociones.'][step]}</p></div>}
+  {ranking&&step===0&&<RankingConfigurator083 key={ranking} rankingId={ranking} onSaved={load}/>}
+  {ranking&&step===1&&<ClubEnrollmentAdmin084 key={ranking} rankingId={ranking}/>}
+  {ranking&&step===2&&<div style={{...panel,display:'grid',gap:14}}>
    <h3 style={{margin:0}}>2. Grupos del ranking</h3>
    <form onSubmit={e=>{e.preventDefault();void run('racketon_add_group_080',{p_ranking:ranking,p_name:groupName},'Grupo añadido')}} style={{display:'flex',gap:10,flexWrap:'wrap'}}>
     <input required maxLength={100} style={{...input,flex:'1 1 220px',width:'auto'}} value={groupName} onChange={e=>setGroupName(e.target.value)} placeholder="Ej. Grupo 1, División Oro…"/>
@@ -85,6 +87,7 @@ export default function ClubRankingsAdmin081({userId}:{userId:string}){
    </div>
    <p style={{fontSize:13,color:'#71717a'}}>La clasificación interna de estos grupos es independiente del rating global RACKETON. Utiliza el panel competitivo para asignar jugadores y registrar resultados.</p>
   </div>}
-  {ranking&&<RankingCompetition180 key={ranking} rankingId={ranking} groups={groups.filter(g=>g.ranking_id===ranking)}/>}
+  {ranking&&(step===2||step===3)&&<RankingCompetition180 view={step===2?"groups":"competition"} key={ranking+step} rankingId={ranking} groups={groups.filter(g=>g.ranking_id===ranking)}/>}
+ {ranking&&step<3&&<button style={button} onClick={()=>setStep(step+1)}>Continuar a { ["participantes","grupos","ciclos y resultados"][step]}</button>}
  </section>;
 }

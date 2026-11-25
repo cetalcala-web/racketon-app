@@ -37,14 +37,14 @@ export default function RankingConfigurator083({rankingId,onSaved}:{rankingId:st
   if (!supabase) { setError('Supabase no está configurado.'); return; }
   setBusy(true);setError('');setNotice('');
   const settings={seeding,promotion,group_size:Number(size),cycle_weeks:Number(weeks),points_win:Number(win),points_loss:Number(loss),allow_challenges:challenges,configuration_version:'0.8.3'};
-  const {error:err}=await supabase.rpc('racketon_configure_ranking_083',{
+  try { const {error:err}=await supabase.rpc('racketon_configure_ranking_083',{
    p_ranking:rankingId,p_format:format,p_settings:settings,p_group_count:format==='box'&&existing===0?count:0,p_group_prefix:prefix
-  });
+  }).abortSignal(AbortSignal.timeout(20000));
   if(err)setError(err.message);else{setNotice('Configuración guardada correctamente. El ranking sigue en borrador.');await onSaved()}
-  setBusy(false);
+  } catch(e){setError("No se pudo confirmar el guardado. Actualiza antes de volver a intentarlo. "+String(e));} finally {setBusy(false);}
  }
  return <form style={card} onSubmit={e=>void save(e)}>
-  <div><span style={{color:'#c8102e',fontSize:12,fontWeight:800}}>RACKETON · CONFIGURADOR 0.8.3</span><h3 style={{margin:'6px 0'}}>Reglas de competición</h3><p style={{fontSize:13,color:'#52525b'}}>Personaliza el ranking oficial. La generación de grupos crea su estructura, todavía no asigna jugadores.</p></div>
+  <div><span style={{color:'#c8102e',fontSize:12,fontWeight:800}}>PASO 1 · REGLAMENTO</span><h3 style={{margin:'6px 0'}}>Reglas de competición</h3><p style={{fontSize:13,color:'#52525b'}}>Personaliza el ranking oficial. La generación de grupos crea su estructura, todavía no asigna jugadores.</p></div>
   {error&&<p role="alert" style={{color:'#b91c1c'}}>{error}</p>}
   {notice&&<p role="status" style={{color:'#15803d'}}>{notice}</p>}
   <label>Formato<select style={field} value={format} onChange={e=>setFormat(e.target.value)}><option value="box">Grupos · Box League</option><option value="ladder">Escalera de desafíos</option><option value="points">Liga por puntos</option><option value="manual">Manual</option></select></label>
@@ -62,6 +62,6 @@ export default function RankingConfigurator083({rankingId,onSaved}:{rankingId:st
   <label style={{display:'flex',alignItems:'center',gap:9}}><input type="checkbox" checked={challenges} onChange={e=>setChallenges(e.target.checked)}/>Permitir desafíos entre participantes</label>
   <button style={action} disabled={busy||ranking?.status!=='draft'}>{busy?'Guardando…':'Guardar configuración'}</button>
   {ranking?.status!=='draft'&&<small>Este ranking no está en borrador. La configuración está bloqueada.</small>}
-  <small style={{color:'#71717a'}}>Esta versión guarda reglas y genera grupos vacíos. La distribución automática de jugadores, el calendario y los ascensos efectivos llegarán después.</small>
+  <small style={{color:'#71717a'}}>Guarda las reglas y continúa a Participantes. La asignación de grupos se realiza en el paso 3.</small>
  </form>;
 }
