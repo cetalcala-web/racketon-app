@@ -1,3 +1,4 @@
+import PlayerRanking182 from './PlayerRanking182';
 import {useCallback,useEffect,useState} from 'react';
 import {supabase} from './supabase';
 type Enrollment={id:string;ranking_id:string;player_id:string;status:string;origin:string;invited_email:string|null};
@@ -51,6 +52,7 @@ export function PlayerEnrollments084({userId,rankingId}:{userId:string;rankingId
  {!mine.length&&<p style={{color:'#666'}}>No tienes solicitudes ni invitaciones.</p>}
  {mine.map(x=><div key={x.id} style={{border:'1px solid #eee',padding:12,borderRadius:10,display:'grid',gap:7}}><strong>{rankings.find(r=>r.id===x.ranking_id)?.name||'Ranking oficial · '+x.ranking_id.slice(0,8)}</strong><span>{status(x.status)}</span>
  {x.status==='pending_player'&&<div style={{display:'flex',gap:8}}><button style={button} disabled={busy} onClick={()=>void run('racketon_decide_enrollment_084',{p_enrollment:x.id,p_accept:true,p_as_club:false},'Invitación aceptada')}>Aceptar invitación</button><button disabled={busy} onClick={()=>void run('racketon_decide_enrollment_084',{p_enrollment:x.id,p_accept:false,p_as_club:false},'Invitación rechazada')}>Rechazar</button></div>}
+ {x.status==='active'&&<PlayerRanking182 rankingId={x.ranking_id}/>}
  {['active','pending_club','pending_player'].includes(x.status)&&<button style={{justifySelf:'start'}} disabled={busy} onClick={()=>{if(window.confirm('¿Quieres retirar tu participación o solicitud?'))void run('racketon_withdraw_enrollment_084',{p_enrollment:x.id},'Baja registrada')}}>Retirarme</button>}
  </div>)}
  <h3 style={{margin:'8px 0 0'}}>Rankings abiertos</h3>
