@@ -10,6 +10,7 @@ const labels:Record<string,string>={invited:'Esperando aceptación',accepted:'Pa
 export default function RacketonDoubles107({userId}:{userId:string}){
  const [sport,setSport]=useState<Sport>('Pádel'),[candidates,setCandidates]=useState<Candidate[]>([]),[matches,setMatches]=useState<Match[]>([]);
  const [partner,setPartner]=useState(''),[rival1,setRival1]=useState(''),[rival2,setRival2]=useState(''),[place,setPlace]=useState(''),[date,setDate]=useState('');
+ const [kind,setKind]=useState<'ranking'|'friendly'>('ranking');
  const [busy,setBusy]=useState(false),[notice,setNotice]=useState(''),[scores,setScores]=useState<Record<string,string>>({});
  const load=useCallback(async()=>{if(!supabase)return;const {data,error}=await supabase.rpc('my_doubles_107');if(error)setNotice(error.message);else setMatches((data||[]) as Match[])},[]);
  useEffect(()=>{void load()},[load,userId]);
@@ -24,7 +25,7 @@ export default function RacketonDoubles107({userId}:{userId:string}){
  if(error)setNotice('Error: '+error.message);else{setNotice('Operación registrada correctamente.');await load();}
  }
  async function create(e:React.FormEvent){e.preventDefault();if(new Set([userId,partner,rival1,rival2]).size!==4){setNotice('Selecciona cuatro jugadores diferentes.');return;}
- await call('create_doubles_107',{p_sport:sport,p_partner:partner,p_opponent1:rival1,p_opponent2:rival2,p_kind:'friendly',p_location:place,p_proposed_at:date?new Date(date).toISOString():null});
+ await call('create_doubles_107',{p_sport:sport,p_partner:partner,p_opponent1:rival1,p_opponent2:rival2,p_kind:kind,p_location:place,p_proposed_at:date?new Date(date).toISOString():null});
  }
  function selector(label:string,value:string,set:(x:string)=>void,excluded:string[]){return <label style={{display:'grid',gap:5,fontSize:13}}>{label}<select required style={field} value={value} onChange={e=>set(e.target.value)}><option value="">Selecciona jugador</option>{candidates.filter(c=>c.user_id===value||!excluded.includes(c.user_id)).map(c=><option key={c.user_id} value={c.user_id}>{c.display_name||'Jugador'} · {c.user_id.slice(0,8)}</option>)}</select></label>}
  async function submit(m:Match){const raw=scores[m.id]||'';if(!/^\s*\d{1,3}\s*-\s*\d{1,3}(\s*,\s*\d{1,3}\s*-\s*\d{1,3}){1,2}\s*$/.test(raw)){setNotice('Introduce dos o tres juegos completos.');return;}const sets=raw.split(',').map(x=>x.trim().split('-').map(Number));
@@ -37,8 +38,9 @@ export default function RacketonDoubles107({userId}:{userId:string}){
  return <div style={{maxWidth:980,margin:'20px auto',display:'grid',gap:20}}>
  <form style={card} onSubmit={e=>void create(e)}>
  <h2 style={{margin:0}}>Nuevo desafío de dobles</h2>
- <p style={{margin:0,fontSize:13,color:'#666'}}>Primera fase: amistosos verificados, sin modificación del rating. Los cuatro jugadores deben estar evaluados y visibles en el buscador.</p>
+ <p style={{margin:0,fontSize:13,color:'#666'}}>Los partidos competitivos se registran para el futuro rating; durante las pruebas no modifican el rating oficial. Los cuatro jugadores deben estar evaluados y visibles en el buscador.</p>
  <label>Deporte<select style={field} value={sport} onChange={e=>setSport(e.target.value as Sport)}><option>Pádel</option><option>Pickleball</option></select></label>
+ <label>Modalidad<select style={field} value={kind} onChange={e=>setKind(e.target.value as 'ranking'|'friendly')}><option value="ranking">Competitivo (rating en pruebas)</option><option value="friendly">Amistoso (sin rating)</option></select></label>
  {selector('Tu pareja (equipo 1)',partner,setPartner,[rival1,rival2])}
  {selector('Rival 1 (equipo 2)',rival1,setRival1,[partner,rival2])}
  {selector('Rival 2 (equipo 2)',rival2,setRival2,[partner,rival1])}
@@ -53,7 +55,7 @@ export default function RacketonDoubles107({userId}:{userId:string}){
  const canReview=m.status==='result_pending'&&m.submitted_by!==userId;
  const canFinalize=m.status==='result_pending'&&m.review_deadline&&Date.now()>=new Date(m.review_deadline).getTime();
  return <article key={m.id} style={{border:'1px solid #eee',borderRadius:10,padding:14,display:'grid',gap:10}}>
- <strong>{m.sport} · {labels[m.status]||m.status}</strong>
+ <strong>{m.sport} · {m.kind==='ranking'?'Competitivo':'Amistoso'} · {labels[m.status]||m.status}</strong>
  <div style={{fontSize:14}}>Equipo 1: {m.players.filter(p=>p.team===1).map(p=>p.name+(p.accepted===null?' (pendiente)':p.accepted===false?' (rechazó)':'')).join(' + ')}</div>
  <div style={{fontSize:14}}>Equipo 2: {m.players.filter(p=>p.team===2).map(p=>p.name+(p.accepted===null?' (pendiente)':p.accepted===false?' (rechazó)':'')).join(' + ')}</div>
  {m.location&&<span style={{fontSize:13}}>{m.location}</span>}
