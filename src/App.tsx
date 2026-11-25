@@ -532,6 +532,11 @@ function PlayerAgenda121({userId}:{userId:string}){
 
 
 type PlayerNotice128={id:string;kind:'challenge'|'training'|'competition';title:string;detail:string;date:string;action:'Desafíos'|'Mi agenda'|'Mis competiciones';urgent:boolean};
+function PendingNotices193({onNavigate,userId}:{userId:string;onNavigate:(area:PlayerArea,sub:string)=>void}){
+ const [items,setItems]=useState<{id:string;title:string;detail:string;action:string}[]>([]);const [error,setError]=useState('');
+ useEffect(()=>{let active=true;let busy=false;const load=async()=>{if(!supabase||busy)return;busy=true;try{const {data,error}=await supabase.rpc('racketon_pending_notices_193').abortSignal(AbortSignal.timeout(15000));if(active){if(error)setError(error.message);else{setItems(data||[]);setError('')}}}catch(e){if(active)setError(String(e))}finally{busy=false}};void load();const timer=setInterval(load,10000);return()=>{active=false;clearInterval(timer)}},[userId]);
+ return <section style={{background:'white',border:'1px solid #e6e9ef',borderRadius:16,padding:18,marginBottom:16}}><h2>Acciones pendientes ({items.length})</h2>{error&&<p role="alert">No se pudieron actualizar las acciones: {error}</p>}{!error&&!items.length&&<p>No hay acciones pendientes.</p>}{items.map(n=><article key={n.id} style={{borderTop:'1px solid #eee',padding:'12px 0'}}><strong>{n.title}</strong><p>{n.detail}</p><button type="button" style={{background:'#c8102e',color:'white',border:0,borderRadius:8,padding:'9px 14px',cursor:'pointer'}} onClick={()=>onNavigate(n.action==='Mensajes'?'Inicio':'Clasificaciones',n.action)}>Abrir {n.action}</button></article>)}</section>
+}
 function PlayerNotices128({userId,onNavigate}:{userId:string;onNavigate:(area:PlayerArea,sub:string)=>void}){
  const [notices,setNotices]=useState<PlayerNotice128[]>([]);
  const [seen,setSeen]=useState<string[]>([]);
@@ -1119,7 +1124,7 @@ function PlayerNavigation112({user,opponent,onClearOpponent,onChallenge}:{user:U
   area==='Clasificaciones'&&sub==='Historial'?<div style={navCard}><h2>Historial y evolución del rating · Tenis</h2><TennisRatingHistory userId={user.id}/><p style={{fontSize:13,color:'#64748b'}}>Las estadísticas históricas de pádel y pickleball se incorporarán cuando haya resultados competitivos disponibles.</p></div>:
   area==='Inicio'&&sub==='Mi agenda'?<PlayerAgenda121 userId={user.id}/>: 
   area==='Inicio'&&sub==='Mensajes'?<PlayerChat185 key={user.id+chatPeer} initialPeer={chatPeer}/>: 
-  area==='Inicio'&&sub==='Avisos'?<PlayerNotices128 userId={user.id} onNavigate={go}/>: 
+  area==='Inicio'&&sub==='Avisos'?<><PendingNotices193 userId={user.id} onNavigate={go}/><PlayerNotices128 userId={user.id} onNavigate={go}/></>: 
   area==='Inicio'&&sub==='Mis datos'?<div className="rkt-personal-section">
     <div className="rkt-personal-tabs">{([{name:'Datos personales',icon:UserRound},{name:'Privacidad',icon:ShieldCheck},{name:'Configuración',icon:UserPen},{name:'Mi monedero',icon:Wallet}] as {name:string;icon:LucideIcon}[]).map(item=>{const I=item.icon;return <button key={item.name} className={dataTab===item.name?'active':''} type="button" onClick={()=>setDataTab(item.name)}><I size={17}/>{item.name}</button>})}</div>
     {dataTab==='Datos personales'?<PlayerProfile user={user} mode="personal"/>:dataTab==='Privacidad'?<PlayerProfile user={user} mode="privacy"/>:dataTab==='Configuración'?<PlayerAccountSettings119 user={user}/>:dataTab==='Mi monedero'?<PlayerWallet120/>:<PendingPlayerModule title={dataTab} description={planned[dataTab]||'Esta sección se desarrollará próximamente.'}/>}
