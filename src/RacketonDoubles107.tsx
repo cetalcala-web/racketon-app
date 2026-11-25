@@ -27,10 +27,11 @@ export default function RacketonDoubles107({userId}:{userId:string}){
  await call('create_doubles_107',{p_sport:sport,p_partner:partner,p_opponent1:rival1,p_opponent2:rival2,p_kind:'friendly',p_location:place,p_proposed_at:date?new Date(date).toISOString():null});
  }
  function selector(label:string,value:string,set:(x:string)=>void,excluded:string[]){return <label style={{display:'grid',gap:5,fontSize:13}}>{label}<select required style={field} value={value} onChange={e=>set(e.target.value)}><option value="">Selecciona jugador</option>{candidates.filter(c=>c.user_id===value||!excluded.includes(c.user_id)).map(c=><option key={c.user_id} value={c.user_id}>{c.display_name||'Jugador'} · {c.user_id.slice(0,8)}</option>)}</select></label>}
- async function submit(m:Match){const raw=scores[m.id]||'';const sets=raw.split(',').map(x=>x.trim().split('-').map(Number));
+ async function submit(m:Match){const raw=scores[m.id]||'';if(!/^\s*\d{1,3}\s*-\s*\d{1,3}(\s*,\s*\d{1,3}\s*-\s*\d{1,3}){1,2}\s*$/.test(raw)){setNotice('Introduce dos o tres juegos completos.');return;}const sets=raw.split(',').map(x=>x.trim().split('-').map(Number));
  if(sets.length<2||sets.length>3||sets.some(x=>x.length!==2||x.some(v=>!Number.isInteger(v)))){setNotice('Formato: 6-4, 6-3 (o tres sets)');return;}
+ if(m.sport==='Pickleball'&&sets.some(([x,y])=>Math.max(x,y)!==Math.max(11,Math.min(x,y)+2)||Math.abs(x-y)<2)){setNotice('Pickleball: juegos a 11 puntos con diferencia de dos.');return;}
  const a=sets.filter(x=>x[0]>x[1]).length,b=sets.filter(x=>x[1]>x[0]).length;
- if(a!==2&&b!==2){setNotice('El partido debe decidirse al mejor de tres sets.');return;}
+ if((a!==2&&b!==2)||(sets.length===3&&((sets[0][0]>sets[0][1])===(sets[1][0]>sets[1][1])))){setNotice('El partido debe decidirse al mejor de tres sets.');return;}
  await call('submit_doubles_result_107',{p_match:m.id,p_score:sets,p_winning_team:a===2?1:2});
  }
  return <div style={{maxWidth:980,margin:'20px auto',display:'grid',gap:20}}>
@@ -59,7 +60,7 @@ export default function RacketonDoubles107({userId}:{userId:string}){
  {m.score&&<div><strong>Marcador: </strong>{m.score.map(s=>s.join('-')).join(', ')} · Gana equipo {m.winning_team}</div>}
  {m.review_deadline&&<p style={{fontSize:13,margin:0}}>Fin del plazo de impugnación: {new Date(m.review_deadline).toLocaleString('es-ES')}</p>}
  {pending&&<div style={{display:'flex',gap:8}}><button className="primary" disabled={busy} onClick={()=>void call('respond_doubles_107',{p_match:m.id,p_accept:true})}>Aceptar</button><button className="outline" disabled={busy} onClick={()=>void call('respond_doubles_107',{p_match:m.id,p_accept:false})}>Rechazar</button></div>}
- {m.status==='accepted'&&<div style={{display:'grid',gap:8}}><label>Resultado (ej.: 6-4, 6-3)<input style={field} placeholder="6-4, 6-3" value={scores[m.id]||''} onChange={e=>setScores(s=>({...s,[m.id]:e.target.value}))}/></label><button className="primary" disabled={busy} onClick={()=>void submit(m)}>Registrar resultado</button></div>}
+ {m.status==='accepted'&&<div style={{display:'grid',gap:8}}><label>{m.sport==='Pickleball'?'Resultado a 11 puntos (mejor de 3 juegos)':'Resultado (ej.: 6-4, 6-3)'}<input style={field} placeholder={m.sport==='Pickleball'?'11-7, 11-9':'6-4, 6-3'} value={scores[m.id]||''} onChange={e=>setScores(s=>({...s,[m.id]:e.target.value}))}/></label><button className="primary" disabled={busy} onClick={()=>void submit(m)}>Registrar resultado</button></div>}
  {canReview&&<div style={{display:'flex',gap:8,flexWrap:'wrap'}}><button className="outline" disabled={busy} onClick={()=>void call('review_doubles_107',{p_match:m.id,p_action:'confirm'})}>Confirmar marcador</button><button className="outline" disabled={busy} onClick={()=>void call('review_doubles_107',{p_match:m.id,p_action:'dispute'})}>Impugnar resultado</button></div>}
  {canFinalize&&<button className="primary" disabled={busy} onClick={()=>void call('finalize_doubles_107',{p_match:m.id})}>Cerrar acta tras 24 horas</button>}
  {m.status==='disputed'&&<p style={{color:'#a33',margin:0}}>Acta bloqueada por impugnación. Pendiente de resolución administrativa (próxima versión).</p>}
