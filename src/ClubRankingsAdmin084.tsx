@@ -1,3 +1,4 @@
+import RankingCompetition180 from './RankingCompetition180';
 import {ClubEnrollmentAdmin084} from './RankingEnrollments084';
 import RankingConfigurator083 from './RankingConfigurator083';
 import {useCallback,useEffect,useState} from 'react';
@@ -48,7 +49,7 @@ export default function ClubRankingsAdmin081({userId}:{userId:string}){
  };
  const filtered=rankings.filter(r=>r.club_id===club);
  return <section style={{maxWidth:1050,margin:'20px auto',display:'grid',gap:16}}>
-  <div style={panel}><span style={{color:'#c8102e',fontWeight:800,fontSize:12}}>RACKETON · RANKINGS OFICIALES</span><h2 style={{margin:'8px 0'}}>Gestión de rankings</h2><p style={{color:'#52525b'}}>Versión 0.8.4: configuración, solicitudes e invitaciones con aceptación bilateral. La asignación de jugadores a grupos llegará después.</p></div>
+  <div style={panel}><span style={{color:'#c8102e',fontWeight:800,fontSize:12}}>RACKETON · RANKINGS OFICIALES</span><h2 style={{margin:'8px 0'}}>Gestión de rankings</h2><p style={{color:'#52525b'}}>Versión 0.8.4: configuración, solicitudes e invitaciones con aceptación bilateral. Gestión de grupos, ciclos y resultados competitivos.</p></div>
   {error&&<div role="alert" style={{...panel,color:'#b91c1c'}}>Error: {error}. Comprueba que has ejecutado el SQL 0013.</div>}
   {notice&&<div role="status" style={{...panel,color:'#15803d'}}>{notice}</div>}
   <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(260px,1fr))',gap:16}}>
@@ -82,7 +83,8 @@ export default function ClubRankingsAdmin081({userId}:{userId:string}){
    <div style={{display:'grid',gridTemplateColumns:'repeat(auto-fit,minmax(150px,1fr))',gap:10}}>
     {groups.filter(g=>g.ranking_id===ranking).map(g=><div key={g.id} style={{padding:14,border:'1px solid #e4e4e7',borderRadius:10}}><span style={{fontSize:12,color:'#71717a'}}>Posición {g.sort_order}</span><div style={{fontWeight:700}}>{g.name}</div></div>)}
    </div>
-   <p style={{fontSize:13,color:'#71717a'}}>La clasificación interna de estos grupos es independiente del rating global RACKETON. En esta fase no se asignan jugadores ni se publican resultados.</p>
+   <p style={{fontSize:13,color:'#71717a'}}>La clasificación interna de estos grupos es independiente del rating global RACKETON. Utiliza el panel competitivo para asignar jugadores y registrar resultados.</p>
   </div>}
+  {ranking&&<RankingCompetition180 key={ranking} rankingId={ranking} groups={groups.filter(g=>g.ranking_id===ranking)}/>}
  </section>;
 }
