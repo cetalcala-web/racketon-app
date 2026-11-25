@@ -8,7 +8,7 @@ const button:React.CSSProperties={padding:'10px 14px',background:'#c8102e',color
 const field:React.CSSProperties={padding:11,border:'1px solid #ddd',borderRadius:9,width:'100%',boxSizing:'border-box'};
 const status=(s:string)=>({pending_club:'Pendiente de aprobación del club',pending_player:'Pendiente de aceptación del jugador',active:'Inscripción activa',rejected:'Rechazada',declined:'Rechazada por el jugador',withdrawn:'Baja voluntaria'} as Record<string,string>)[s]||s;
 export function ClubEnrollmentAdmin084({rankingId}:{rankingId:string}){
- const [ranking,setRanking]=useState<Ranking|null>(null),[items,setItems]=useState<Enrollment[]>([]),[email,setEmail]=useState(''),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
+ const [ranking,setRanking]=useState<Ranking|null>(null),[items,setItems]=useState<Enrollment[]>([]),[email,setEmail]=useState(''),[bulk,setBulk]=useState(''),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
  const load=useCallback(async()=>{const db=supabase;if(!db)return;
  const [a,b]=await Promise.all([db.from('racketon_club_rankings').select('id,club_id,name,enrollment_open').eq('id',rankingId).single(),db.from('racketon_ranking_enrollments').select('id,ranking_id,player_id,status,origin,invited_email').eq('ranking_id',rankingId).order('created_at',{ascending:false})]);
  if(a.error||b.error){setError(a.error?.message||b.error?.message||'Error al cargar');return}
@@ -16,14 +16,18 @@ export function ClubEnrollmentAdmin084({rankingId}:{rankingId:string}){
  useEffect(()=>{void load()},[load]);
  async function run(fn:string,args:Record<string,unknown>,message:string){const db=supabase;if(!db)return;setBusy(true);setError('');setNotice('');
  try{const {error:e}=await db.rpc(fn,args).abortSignal(AbortSignal.timeout(20000));if(e)setError(e.message);else{setNotice(message);await load()}}catch(e){setError("No se pudo confirmar la operación. Actualiza antes de repetirla. "+String(e))}finally{setBusy(false)}}
+ const share=new URL(window.location.origin);share.searchParams.set('ranking',rankingId);
+ async function inviteBulk(){const db=supabase;if(!db)return;const emails=[...new Set(bulk.split(/[\s,;]+/).map(x=>x.trim().toLowerCase()).filter(Boolean))];if(!emails.length)return;setBusy(true);setError('');setNotice('');let ok=0;const failures:string[]=[];try{for(const address of emails){try{const {error}=await db.rpc('racketon_invite_ranking_084',{p_ranking:rankingId,p_email:address}).abortSignal(AbortSignal.timeout(20000));if(error)failures.push(address+': '+error.message);else ok++}catch{failures.push(address+': estado no confirmado')}}setNotice(ok+' invitaciones procesadas');setError(failures.join(' | '));await load()}finally{setBusy(false)}}
  return <section style={card}><h3 style={{margin:0}}>Participantes e invitaciones</h3>
  <p style={{margin:0,color:'#555',fontSize:13}}>Nadie entra en el ranking sin aceptación del jugador y aprobación del club.</p>
  {error&&<p role="alert" style={{color:'#b91c1c'}}>{error}</p>}{notice&&<p role="status" style={{color:'#15803d'}}>{notice}</p>}
  <label style={{display:'flex',alignItems:'center',gap:9}}><input type="checkbox" disabled={busy||!ranking} checked={ranking?.enrollment_open||false} onChange={e=>void run('racketon_set_enrollment_open_084',{p_ranking:rankingId,p_open:e.target.checked},'Visibilidad de inscripciones actualizada')}/>Permitir que los jugadores encuentren este ranking y soliciten participar</label>
+ {ranking?.enrollment_open&&<div style={{display:'grid',gap:8}}><strong>Enlace de inscripción</strong><input style={field} readOnly value={share.href}/><button style={button} onClick={async()=>{try{await navigator.clipboard.writeText(share.href);setNotice('Enlace copiado')}catch{setError('Copia manualmente el enlace')}}}>Copiar enlace</button><a href={'https://wa.me/?text='+encodeURIComponent('Inscríbete en '+ranking.name+' en RACKETON: '+share.href)} target="_blank" rel="noopener noreferrer">Compartir por WhatsApp</a></div>}
  <form onSubmit={e=>{e.preventDefault();void run('racketon_invite_ranking_084',{p_ranking:rankingId,p_email:email.trim()},'Invitación registrada; el jugador debe aceptarla');setEmail('')}} style={{display:'flex',gap:10,flexWrap:'wrap'}}>
  <input style={{...field,flex:'1 1 200px',width:'auto'}} type="email" required value={email} onChange={e=>setEmail(e.target.value)} placeholder="Correo de un jugador registrado"/>
  <button style={button} disabled={busy}>Invitar jugador</button></form>
  <small style={{color:'#666'}}>La invitación aparece en la cuenta RACKETON del destinatario; no se envía correo electrónico automáticamente.</small>
+ <label>Invitación múltiple por correo<textarea style={field} rows={4} value={bulk} onChange={e=>setBulk(e.target.value)} placeholder="Un correo por línea"/></label><button style={button} disabled={busy||!bulk.trim()} onClick={()=>void inviteBulk()}>Procesar invitaciones</button>
  <h4 style={{margin:'5px 0'}}>Solicitudes recibidas e invitaciones</h4>
  {!items.length&&<p style={{color:'#666'}}>Aún no hay solicitudes ni invitaciones.</p>}
  {items.map(x=><div key={x.id} style={{border:'1px solid #eee',borderRadius:10,padding:12,display:'grid',gap:8}}>
@@ -33,7 +37,7 @@ export function ClubEnrollmentAdmin084({rankingId}:{rankingId:string}){
  <small style={{color:'#666'}}>Cuando acepten la invitación, continúa al paso Grupos para asignarlos.</small>
  </section>
 }
-export function PlayerEnrollments084({userId}:{userId:string}){
+export function PlayerEnrollments084({userId,rankingId}:{userId:string;rankingId?:string}){
  const [rankings,setRankings]=useState<Ranking[]>([]),[clubs,setClubs]=useState<Club[]>([]),[mine,setMine]=useState<Enrollment[]>([]),[error,setError]=useState(''),[notice,setNotice]=useState(''),[busy,setBusy]=useState(false);
  const load=useCallback(async()=>{const db=supabase;if(!db)return;
  const [r,c,m]=await Promise.all([db.from('racketon_club_rankings').select('id,club_id,name,enrollment_open').eq('enrollment_open',true),db.from('racketon_clubs').select('id,name,city'),db.from('racketon_ranking_enrollments').select('id,ranking_id,player_id,status,origin,invited_email').eq('player_id',userId)]);
@@ -50,7 +54,7 @@ export function PlayerEnrollments084({userId}:{userId:string}){
  {['active','pending_club','pending_player'].includes(x.status)&&<button style={{justifySelf:'start'}} disabled={busy} onClick={()=>{if(window.confirm('¿Quieres retirar tu participación o solicitud?'))void run('racketon_withdraw_enrollment_084',{p_enrollment:x.id},'Baja registrada')}}>Retirarme</button>}
  </div>)}
  <h3 style={{margin:'8px 0 0'}}>Rankings abiertos</h3>
- {!rankings.length&&<p style={{color:'#666'}}>No hay rankings abiertos para nuevas solicitudes.</p>}
- {rankings.map(r=>{const existing=mine.find(m=>m.ranking_id===r.id);return <div key={r.id} style={{border:'1px solid #eee',borderRadius:10,padding:12,display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',flexWrap:'wrap'}}><div><strong>{r.name}</strong><div style={{fontSize:13,color:'#666'}}>{clubs.find(c=>c.id===r.club_id)?.name||'Club oficial'}</div></div><button style={button} disabled={busy||existing?.status==='active'||existing?.status==='pending_club'} onClick={()=>void run('racketon_request_ranking_084',{p_ranking:r.id},'Solicitud enviada al club')}>{existing?.status==='active'?'Inscrito':existing?.status==='pending_club'?'Solicitud pendiente':existing?.status==='pending_player'?'Aceptar invitación':'Solicitar incorporación'}</button></div>})}
+ {!rankings.filter(r=>!rankingId||r.id===rankingId).length&&<p style={{color:'#666'}}>No hay rankings abiertos para nuevas solicitudes.</p>}
+ {rankings.filter(r=>!rankingId||r.id===rankingId).map(r=>{const existing=mine.find(m=>m.ranking_id===r.id);return <div key={r.id} style={{border:'1px solid #eee',borderRadius:10,padding:12,display:'flex',justifyContent:'space-between',gap:12,alignItems:'center',flexWrap:'wrap'}}><div><strong>{r.name}</strong><div style={{fontSize:13,color:'#666'}}>{clubs.find(c=>c.id===r.club_id)?.name||'Club oficial'}</div></div><button style={button} disabled={busy||existing?.status==='active'||existing?.status==='pending_club'} onClick={()=>void run('racketon_request_ranking_084',{p_ranking:r.id},'Solicitud enviada al club')}>{existing?.status==='active'?'Inscrito':existing?.status==='pending_club'?'Solicitud pendiente':existing?.status==='pending_player'?'Aceptar invitación':'Solicitar incorporación'}</button></div>})}
  </section>
 }
