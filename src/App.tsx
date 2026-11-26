@@ -1,3 +1,4 @@
+import Family202 from './Family202';
 import GlobalModeration195 from './GlobalModeration195';
 import PlayerChat185 from './PlayerChat185';
 import SchoolManager090 from './SchoolManager091';
@@ -1127,8 +1128,8 @@ function PlayerNavigation112({user,opponent,onClearOpponent,onChallenge}:{user:U
   area==='Inicio'&&sub==='Mensajes'?<PlayerChat185 key={user.id+chatPeer} initialPeer={chatPeer}/>: 
   area==='Inicio'&&sub==='Avisos'?<><PendingNotices193 userId={user.id} onNavigate={go}/><PlayerNotices128 userId={user.id} onNavigate={go}/></>: 
   area==='Inicio'&&sub==='Mis datos'?<div className="rkt-personal-section">
-    <div className="rkt-personal-tabs">{([{name:'Datos personales',icon:UserRound},{name:'Privacidad',icon:ShieldCheck},{name:'Configuración',icon:UserPen},{name:'Mi monedero',icon:Wallet}] as {name:string;icon:LucideIcon}[]).map(item=>{const I=item.icon;return <button key={item.name} className={dataTab===item.name?'active':''} type="button" onClick={()=>setDataTab(item.name)}><I size={17}/>{item.name}</button>})}</div>
-    {dataTab==='Datos personales'?<PlayerProfile user={user} mode="personal"/>:dataTab==='Privacidad'?<PlayerProfile user={user} mode="privacy"/>:dataTab==='Configuración'?<PlayerAccountSettings119 user={user}/>:dataTab==='Mi monedero'?<PlayerWallet120/>:<PendingPlayerModule title={dataTab} description={planned[dataTab]||'Esta sección se desarrollará próximamente.'}/>}
+    <div className="rkt-personal-tabs">{([{name:'Datos personales',icon:UserRound},{name:'Privacidad',icon:ShieldCheck},{name:'Configuración',icon:UserPen},{name:'Mi monedero',icon:Wallet},{name:'Familia',icon:Users}] as {name:string;icon:LucideIcon}[]).map(item=>{const I=item.icon;return <button key={item.name} className={dataTab===item.name?'active':''} type="button" onClick={()=>setDataTab(item.name)}><I size={17}/>{item.name}</button>})}</div>
+    {dataTab==='Datos personales'?<PlayerProfile user={user} mode="personal"/>:dataTab==='Privacidad'?<PlayerProfile user={user} mode="privacy"/>:dataTab==='Configuración'?<PlayerAccountSettings119 user={user}/>:dataTab==='Familia'?<Family202 key={user.id} userId={user.id}/>:dataTab==='Mi monedero'?<PlayerWallet120/>:<PendingPlayerModule title={dataTab} description={planned[dataTab]||'Esta sección se desarrollará próximamente.'}/>}
   </div>:
   <PendingPlayerModule title={sub} description={planned[sub]||'Este módulo se implementará de forma independiente, manteniendo la navegación aprobada.'}/>}
   </div></div>
