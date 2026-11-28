@@ -1058,6 +1058,7 @@ function ClubEntries137({eventId,onChanged}:{eventId:string;onChanged:()=>void})
 }
 
 function PendingPlayerModule({title,description}:{title:string;description:string}){
+ if(['Buscar pistas','Mis reservas','Mis clubes'].includes(title))return <section style={{display:"grid",gap:16,maxWidth:1100}}><header style={{background:'linear-gradient(120deg,#d20b24,#a70820)',color:'#fff',borderRadius:20,padding:'22px 24px',boxShadow:'0 8px 22px #a7082020'}}><CalendarDays size={30}/><h2 style={{color:"white",margin:"8px 0"}}>{title}</h2><p style={{color:"#ffe2e7",margin:0}}>{description}</p></header><div style={{...navCard,textAlign:"center",padding:"40px 20px",borderRadius:20,background:"white"}}><CalendarDays size={40} color="#c8102e"/><h3>Servicio aún no disponible</h3><p style={{color:"#667085"}}>La conexión con instalaciones y reservas se habilitará en una próxima fase.</p></div></section>;
  return <div className="rk236-pending" style={navCard}><CalendarDays aria-hidden="true" size={24}/><h2 style={{marginTop:0}}>{title}</h2><p style={{color:'#64748b'}}>{description}</p><span style={{fontSize:12,color:'#9a3412',fontWeight:700}}>PENDIENTE DE DESARROLLO · No disponible todavía</span></div>;
 }
 function PlayerNavigation112({user,opponent,onClearOpponent,onChallenge}:{user:User;opponent:{id:string;name:string}|null;onClearOpponent:()=>void;onChallenge:(p:{id:string;name:string})=>void}){
