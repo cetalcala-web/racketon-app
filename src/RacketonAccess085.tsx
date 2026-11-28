@@ -1,5 +1,5 @@
 import {useCallback,useEffect,useState} from 'react';
-import {Trophy,PlusCircle,Crown,Users,Target,Heart,TrendingUp,Zap,ArrowRight,ArrowLeft,Lock,Calendar,CheckCircle} from 'lucide-react';
+import {Trophy,PlusCircle,Crown,Users,Target,Heart,TrendingUp,Zap,ArrowRight,ArrowLeft,Lock,CheckCircle} from 'lucide-react';
 import {supabase} from './supabase';
 
 const card:React.CSSProperties={padding:22,border:'1px solid #e5e7eb',borderRadius:16,background:'#fff',display:'grid',gap:12};
